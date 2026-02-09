@@ -1,0 +1,74 @@
+[project]
+name = "context-engine"
+version = "0.1.0"
+description = "AI-powered context aggregation and agent platform for scaling consultancy work"
+authors = [{ name = "Dale Yarborough" }]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # Web Framework
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-multipart>=0.0.6",
+    
+    # Database
+    "sqlalchemy>=2.0.25",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.1",
+    
+    # Vector Store
+    "pinecone-client>=3.0.0",
+    
+    # AI/LLM
+    "anthropic>=0.18.0",
+    "openai>=1.12.0",  # For embeddings
+    "tiktoken>=0.5.2",
+    
+    # Integrations
+    "slack-sdk>=3.27.0",
+    "PyGithub>=2.2.0",
+    "google-api-python-client>=2.118.0",
+    "google-auth-oauthlib>=1.2.0",
+    "notion-client>=2.2.1",
+    
+    # Background Jobs
+    "celery>=5.3.6",
+    "redis>=5.0.1",
+    
+    # Utilities
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.1.0",
+    "httpx>=0.26.0",
+    "python-dotenv>=1.0.1",
+    "structlog>=24.1.0",
+    "watchdog>=4.0.0",  # For file watching
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.4",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.2.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
