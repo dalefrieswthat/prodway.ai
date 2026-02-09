@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prodway
+  labels:
+    app.kubernetes.io/name: prodway
+    app.kubernetes.io/managed-by: kubectl
