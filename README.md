@@ -1,76 +1,90 @@
-# Context Engine
+# Prodway AI
 
-AI-powered context aggregation and agent platform for scaling consultancy work through AI agents rather than headcount.
+**AI tools for service businesses to scale without scaling headcount.**
 
-## What This Does
+## Products
 
-1. **Captures** your patterns across Slack, GitHub, Gmail, Notion, and Cursor
-2. **Learns** your communication style, code patterns, and decision-making
-3. **Drafts** responses, updates, and code reviews in your voice
-4. **Scales** by handling routine work with human-in-the-loop approval
+### 🚀 DealFlow
+Generate SOWs, send contracts, invoice clients - all from Slack.
+
+```
+/sow K8s migration for startup, 50k users, scale to 500k, 6 weeks
+```
+→ Full SOW in 5 seconds → DocuSign → Stripe invoice
+
+[→ apps/dealflow](./apps/dealflow)
+
+### 📋 FormPilot (Coming Soon)
+Chrome extension that auto-fills any form with your company data.
+
+[→ apps/formpilot](./apps/formpilot)
+
+---
 
 ## Quick Start
 
+### DealFlow (Slack Bot)
+
 ```bash
-# Clone and setup
-cd /Users/daleyarborough/Code/context-engine
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+# Set up environment
+cd apps/dealflow
+pip install -r requirements.txt
 
-# Configure
-cp .env.example .env
-# Edit .env with your API keys
+# Configure (see apps/dealflow/README.md for Slack app setup)
+export SLACK_BOT_TOKEN="xoxb-..."
+export SLACK_APP_TOKEN="xapp-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
 
-# Run database migrations
-alembic upgrade head
-
-# Start the API
-uvicorn src.api.main:app --reload
-
-# Start the context watcher (separate terminal)
-python scripts/watch_context.py
+# Run
+python main.py
 ```
+
+### Local Development Stack
+
+```bash
+# Start databases
+cd docker
+docker-compose up -d postgres redis qdrant
+
+# Run API
+cd ..
+pip install -e .
+uvicorn packages.api.main:app --reload
+```
+
+---
 
 ## Project Structure
 
 ```
-context-engine/
-├── spec/           # Product specifications
-├── src/
-│   ├── api/        # FastAPI routes
-│   ├── ingestors/  # Platform connectors
-│   ├── agents/     # AI agents
-│   ├── storage/    # Database & vector store
-│   ├── ai/         # LLM integration
-│   └── core/       # Shared utilities
-├── tests/
-├── scripts/        # CLI tools
-├── docker/
-└── k8s/
+prodway/
+├── apps/
+│   ├── dealflow/        # Slack SOW bot (MVP)
+│   └── formpilot/       # Chrome extension (planned)
+├── packages/
+│   ├── ai/              # Claude + embeddings
+│   ├── api/             # FastAPI backend
+│   ├── core/            # Shared models, config
+│   ├── ingestors/       # Slack, GitHub, etc.
+│   ├── integrations/    # DocuSign, Stripe
+│   └── shared/          # Common utilities
+├── docker/              # Local dev stack
+└── spec/                # Product specs
 ```
 
-## Key Concepts
+---
 
-- **Ingestors**: Pull data from platforms (Slack, GitHub, etc.)
-- **Embeddings**: Convert text to vectors for semantic search
-- **RAG Pipeline**: Retrieve relevant context for AI prompts
-- **Agents**: AI assistants that draft content in your style
-- **Approval Flow**: Human-in-the-loop before sending anything
+## The Vision
 
-## Development
+1. **Today**: Consulting services + AI tooling for myself
+2. **Soon**: DealFlow as a product for other consultants  
+3. **Future**: Full suite of AI tools for service businesses
 
-```bash
-# Run tests
-pytest
+**Revenue**: $30K signed, $40K pipeline (using these tools)
 
-# Lint
-ruff check .
+---
 
-# Type check
-mypy src
-```
+## Links
 
-## License
-
-Private - All rights reserved.
+- Spec: [spec/DEALFLOW_SPEC.md](./spec/DEALFLOW_SPEC.md)
+- Product Spec: [spec/PRODUCT_SPEC.md](./spec/PRODUCT_SPEC.md)
