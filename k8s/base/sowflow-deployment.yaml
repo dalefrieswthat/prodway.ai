@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: dealflow
+  name: sowflow
   namespace: prodway
   labels:
-    app: dealflow
-    app.kubernetes.io/name: dealflow
+    app: sowflow
+    app.kubernetes.io/name: sowflow
     app.kubernetes.io/component: api
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: dealflow
+      app: sowflow
   template:
     metadata:
       labels:
-        app: dealflow
+        app: sowflow
     spec:
       containers:
-        - name: dealflow
-          image: ghcr.io/dalefrieswthat/prodway.ai/dealflow:latest
+        - name: sowflow
+          image: ghcr.io/dalefrieswthat/prodway.ai/sowflow:latest
           ports:
             - containerPort: 8000
           env:
@@ -29,7 +29,7 @@ spec:
               value: "INFO"
           envFrom:
             - secretRef:
-                name: dealflow-secrets
+                name: sowflow-secrets
           resources:
             requests:
               cpu: 100m

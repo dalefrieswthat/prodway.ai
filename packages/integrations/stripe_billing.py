@@ -1,6 +1,6 @@
 """
-Stripe Integration for DealFlow
-================================
+Stripe Integration for SowFlow
+===============================
 Generate payment links and invoices from SOWs.
 
 Setup:
@@ -100,7 +100,7 @@ async def create_invoice(
         customer = stripe.Customer.create(
             email=client_email,
             name=client_name,
-            metadata={"source": "dealflow"},
+            metadata={"source": "sowflow"},
         )
     
     # Create invoice
@@ -162,7 +162,7 @@ async def create_milestone_invoices(
         customer = stripe.Customer.create(
             email=client_email,
             name=client_name,
-            metadata={"source": "dealflow"},
+            metadata={"source": "sowflow"},
         )
     
     invoices = []

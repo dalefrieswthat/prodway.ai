@@ -25,7 +25,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install -r apps/dealflow/requirements.txt
+          pip install -r apps/sowflow/requirements.txt
           pip install pytest pytest-asyncio
       
       - name: Run tests
@@ -55,7 +55,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/dealflow
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/sowflow
           tags: |
             type=sha,prefix=
             type=raw,value=latest
@@ -64,7 +64,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: apps/dealflow/Dockerfile
+          file: apps/sowflow/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -104,4 +104,4 @@ jobs:
         uses: berviantoleo/railway-deploy@main
         with:
           railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: dealflow
+          service: sowflow
