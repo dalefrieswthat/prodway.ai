@@ -6,7 +6,7 @@
 
 ## Products
 
-### 🚀 DealFlow
+### 🚀 SowFlow
 
 Generate Statements of Work from a single Slack command.
 
