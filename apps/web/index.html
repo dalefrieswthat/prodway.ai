@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prodway AI - Close Deals in Minutes</title>
+    <meta name="description" content="AI-powered SOW generation. From Slack message to signed contract in 60 seconds.">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg-secondary: #12121a;
+            --text: #f0f0f5;
+            --text-muted: #8888a0;
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.4);
+            --green: #10b981;
+            --orange: #f59e0b;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Space Grotesk', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        /* Gradient background */
+        .gradient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                var(--bg);
+            z-index: -1;
+        }
+        
+        /* Header */
+        header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            text-decoration: none;
+        }
+        
+        .logo span {
+            color: var(--accent);
+        }
+        
+        .nav-cta {
+            background: var(--accent);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .nav-cta:hover {
+            background: #5558e3;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+        
+        /* Hero */
+        .hero {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 6rem 2rem 4rem;
+            text-align: center;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: var(--bg-secondary);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            color: var(--accent);
+            margin-bottom: 2rem;
+        }
+        
+        h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+        }
+        
+        h1 .highlight {
+            background: linear-gradient(135deg, var(--accent), var(--green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 3rem;
+        }
+        
+        /* CTA Buttons */
+        .cta-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px var(--accent-glow);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.2s;
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.1);
+        }
+        
+        /* Demo Section */
+        .demo {
+            max-width: 800px;
+            margin: 4rem auto;
+            padding: 0 2rem;
+        }
+        
+        .demo-window {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+            box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+        }
+        
+        .demo-header {
+            background: rgba(0,0,0,0.3);
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .demo-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .demo-dot.red { background: #ff5f57; }
+        .demo-dot.yellow { background: #ffbd2e; }
+        .demo-dot.green { background: #28ca42; }
+        
+        .demo-content {
+            padding: 1.5rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .demo-line {
+            margin-bottom: 0.75rem;
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+        
+        .demo-line:nth-child(1) { animation-delay: 0.5s; }
+        .demo-line:nth-child(2) { animation-delay: 1.5s; }
+        .demo-line:nth-child(3) { animation-delay: 2.5s; }
+        .demo-line:nth-child(4) { animation-delay: 3s; }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .command {
+            color: var(--green);
+        }
+        
+        .output {
+            color: var(--text-muted);
+            padding-left: 1rem;
+        }
+        
+        .result {
+            color: var(--orange);
+            font-weight: 600;
+        }
+        
+        /* Features */
+        .features {
+            max-width: 1000px;
+            margin: 6rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+        
+        .feature {
+            background: var(--bg-secondary);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+        
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .feature h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .feature p {
+            color: var(--text-muted);
+        }
+        
+        /* Social Proof */
+        .proof {
+            text-align: center;
+            padding: 4rem 2rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .proof-stats {
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        
+        .stat-label {
+            color: var(--text-muted);
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+        
+        footer a {
+            color: var(--text);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="gradient-bg"></div>
+    
+    <header>
+        <a href="/" class="logo">Prodway<span>.ai</span></a>
+        <a href="mailto:dale@prodway.ai" class="nav-cta">Get Early Access</a>
+    </header>
+    
+    <main>
+        <section class="hero">
+            <div class="badge">🚀 Now in Private Beta</div>
+            <h1>Close deals in minutes,<br><span class="highlight">not days</span></h1>
+            <p class="subtitle">
+                AI-powered SOW generation. From Slack message to signed contract to invoice — all in 60 seconds.
+            </p>
+            <div class="cta-group">
+                <a href="mailto:dale@prodway.ai?subject=Early Access Request" class="btn-primary">
+                    Request Access →
+                </a>
+                <a href="#demo" class="btn-secondary">See Demo</a>
+            </div>
+        </section>
+        
+        <section class="demo" id="demo">
+            <div class="demo-window">
+                <div class="demo-header">
+                    <div class="demo-dot red"></div>
+                    <div class="demo-dot yellow"></div>
+                    <div class="demo-dot green"></div>
+                </div>
+                <div class="demo-content">
+                    <div class="demo-line">
+                        <span class="command">/sow</span> K8s migration for startup, 50k users → 500k, 6 weeks
+                    </div>
+                    <div class="demo-line output">
+                        ⏳ Analyzing scope and generating SOW...
+                    </div>
+                    <div class="demo-line output">
+                        ✅ SOW generated: "Kubernetes Migration & Infrastructure Scaling"
+                    </div>
+                    <div class="demo-line result">
+                        💰 $32,000 USD — [Send to Client] [Edit] [Dismiss]
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="features">
+            <div class="feature">
+                <div class="feature-icon">⚡</div>
+                <h3>Instant SOW Generation</h3>
+                <p>Describe the project in Slack, get a complete Statement of Work in seconds. AI understands scope and suggests pricing.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">✍️</div>
+                <h3>One-Click Signatures</h3>
+                <p>Send directly to DocuSign. Track when it's viewed, signed, and get notified in Slack.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">💳</div>
+                <h3>Automatic Invoicing</h3>
+                <p>Generate Stripe invoices on signature. Milestone-based payments, automatic reminders.</p>
+            </div>
+        </section>
+        
+        <section class="proof">
+            <div class="proof-stats">
+                <div class="stat">
+                    <div class="stat-value">$30K</div>
+                    <div class="stat-label">Closed in Month 1</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">60s</div>
+                    <div class="stat-label">From Request to SOW</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">Hours Wasted on Paperwork</div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <p>© 2026 Prodway AI. Built for consultants who'd rather close deals than write proposals.</p>
+        <p style="margin-top: 0.5rem;">
+            <a href="mailto:dale@prodway.ai">dale@prodway.ai</a>
+        </p>
+    </footer>
+</body>
+</html>
