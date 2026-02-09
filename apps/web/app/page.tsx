@@ -81,7 +81,7 @@ export default function Home() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
-            {/* DealFlow Card */}
+            {/* SowFlow Card */}
             <div className="bg-[#0a0a0a] border border-[#262626] rounded-2xl p-8 glow-green hover:border-green-500/30 transition-all duration-300">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
@@ -90,7 +90,7 @@ export default function Home() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold">DealFlow</h3>
+                  <h3 className="text-2xl font-bold">SowFlow</h3>
                   <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-500 rounded-full">Live</span>
                 </div>
               </div>

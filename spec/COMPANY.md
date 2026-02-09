@@ -12,7 +12,7 @@ Help service businesses scale without scaling headcount.
 
 ## Products
 
-### DealFlow (Primary)
+### SowFlow (Primary)
 **Status**: MVP in development
 
 AI-powered SOW generation and deal flow automation.

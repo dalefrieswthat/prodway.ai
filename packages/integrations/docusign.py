@@ -1,6 +1,6 @@
 """
-DocuSign Integration for DealFlow
-==================================
+DocuSign Integration for SowFlow
+=================================
 Send SOWs for e-signature via DocuSign API.
 
 Setup:

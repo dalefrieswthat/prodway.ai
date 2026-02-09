@@ -1,4 +1,4 @@
-# DealFlow - Slack SOW Bot
+# SowFlow - Slack SOW Bot
 slack-bolt>=1.18.0
 slack-sdk>=3.27.0
 anthropic>=0.18.0

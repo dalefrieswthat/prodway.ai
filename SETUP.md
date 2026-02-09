@@ -1,4 +1,4 @@
-# DealFlow Demo Setup
+# SowFlow Demo Setup
 
 Get the `/sow` Slack command working in 10 minutes.
 
@@ -12,7 +12,7 @@ Get the `/sow` Slack command working in 10 minutes.
 
 1. Go to **[api.slack.com/apps](https://api.slack.com/apps)**
 2. Click **"Create New App"** → **"From scratch"**
-3. Name: `DealFlow`, Workspace: your workspace
+3. Name: `SowFlow`, Workspace: your workspace
 
 ### Configure OAuth Scopes
 
@@ -86,7 +86,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 ## Step 4: Run the Bot
 
 ```bash
-cd /Users/daleyarborough/Code/prodway/apps/dealflow
+cd /Users/daleyarborough/Code/prodway/apps/sowflow
 
 # Install dependencies
 pip install -r requirements.txt
@@ -97,7 +97,7 @@ python main.py
 
 You should see:
 ```
-⚡ Starting DealFlow Slack Bot...
+⚡ Starting SowFlow Slack Bot...
    Use /sow <description> to generate a Statement of Work
 ```
 

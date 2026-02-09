@@ -1,4 +1,4 @@
-# DealFlow - AI-Powered SOW Generation
+# SowFlow - AI-Powered SOW Generation
 
 Generate Statements of Work from a single Slack command.
 
@@ -8,7 +8,7 @@ Generate Statements of Work from a single Slack command.
 
 1. Go to [api.slack.com/apps](https://api.slack.com/apps)
 2. Click "Create New App" → "From scratch"
-3. Name it "DealFlow" and select your workspace
+3. Name it "SowFlow" and select your workspace
 
 ### 2. Configure Slack App
 
@@ -43,7 +43,7 @@ export ANTHROPIC_API_KEY="sk-ant-your-key"
 ### 4. Run the Bot
 
 ```bash
-cd apps/dealflow
+cd apps/sowflow
 pip install -r requirements.txt
 python main.py
 ```
