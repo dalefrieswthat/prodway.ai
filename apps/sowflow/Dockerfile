@@ -3,14 +3,14 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Install dependencies
-COPY apps/dealflow/requirements.txt ./requirements.txt
+COPY apps/sowflow/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy shared packages
 COPY packages ./packages
 
 # Copy app
-COPY apps/dealflow ./
+COPY apps/sowflow ./
 
 # Create non-root user
 RUN useradd -m -u 1000 app && chown -R app:app /app

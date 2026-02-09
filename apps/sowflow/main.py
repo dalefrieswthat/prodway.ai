@@ -1,6 +1,6 @@
 """
-DealFlow - SOW Generation Slack Bot
-====================================
+SowFlow - SOW Generation Slack Bot
+===================================
 MVP: /sow command that generates a Statement of Work from a description
 
 Usage in Slack:
@@ -409,7 +409,7 @@ def handle_dismiss_sow(ack, respond):
 # ============================================================================
 
 if __name__ == "__main__":
-    print("⚡ Starting DealFlow Slack Bot...")
+    print("⚡ Starting SowFlow Slack Bot...")
     print("   Use /sow <description> to generate a Statement of Work")
     
     handler = SocketModeHandler(

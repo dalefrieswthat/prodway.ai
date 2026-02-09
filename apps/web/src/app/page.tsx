@@ -81,7 +81,7 @@ export default function Home() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
-            {/* DealFlow Card */}
+            {/* SowFlow Card */}
             <Card className="bg-card/50 border-border/50 glow-green hover:border-primary/30 transition-all duration-300">
               <CardContent className="p-8">
                 <div className="flex items-center gap-3 mb-6">
@@ -89,7 +89,7 @@ export default function Home() {
                     <FileText className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold">DealFlow</h3>
+                    <h3 className="text-2xl font-bold">SowFlow</h3>
                     <Badge className="bg-primary/20 text-primary border-0 text-xs">Live</Badge>
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-# DealFlow AI - Product Specification
+# SowFlow AI - Product Specification
 
 ## Vision
 
