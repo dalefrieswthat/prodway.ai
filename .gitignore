@@ -58,3 +58,6 @@ docker-compose.override.yml
 
 # Documentation (may contain confidential info)
 claude.md
+
+# Pre-commit
+.secrets.baseline

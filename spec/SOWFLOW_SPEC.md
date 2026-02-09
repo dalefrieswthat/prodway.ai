@@ -29,8 +29,8 @@ Technical consultants and agencies lose deals because:
 **One command. Complete deal flow.**
 
 ```
-/sow Need help migrating from EC2 to K8s. 
-     Currently 50k daily users, need to scale to 500k. 
+/sow Need help migrating from EC2 to K8s.
+     Currently 50k daily users, need to scale to 500k.
      Timeline: 6 weeks.
 ```
 
@@ -239,27 +239,27 @@ CREATE TABLE sows (
     template_id UUID REFERENCES sow_templates(id),
     client_name VARCHAR(255),
     client_email VARCHAR(255),
-    
+
     -- Content
     title VARCHAR(255),
     content JSONB,
     pricing JSONB,
-    
+
     -- AI metadata
     scope_analysis JSONB,
     confidence FLOAT,
     sources_used TEXT[],
-    
+
     -- Status tracking
     status VARCHAR(50),  -- draft, sent, viewed, signed, rejected
     docusign_envelope_id VARCHAR(255),
-    
+
     -- Financials
     total_value DECIMAL(12,2),
     payment_structure JSONB,
     stripe_invoice_id VARCHAR(255),
     mercury_invoice_id VARCHAR(255),
-    
+
     -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     sent_at TIMESTAMP WITH TIME ZONE,
@@ -273,16 +273,16 @@ CREATE TABLE projects (
     id UUID PRIMARY KEY,
     org_id UUID REFERENCES organizations(id),
     sow_id UUID REFERENCES sows(id),
-    
+
     name VARCHAR(255),
     external_id VARCHAR(255),  -- Linear/Jira ID
     external_url VARCHAR(500),
-    
+
     milestones JSONB,
     current_milestone INTEGER DEFAULT 0,
-    
+
     status VARCHAR(50),  -- active, completed, paused, cancelled
-    
+
     started_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE
 );

@@ -19,7 +19,7 @@ from functools import lru_cache
 
 class JSONFormatter(logging.Formatter):
     """Format logs as JSON for easy parsing."""
-    
+
     def format(self, record: logging.LogRecord) -> str:
         log_data = {
             "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -27,7 +27,7 @@ class JSONFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
-        
+
         # Add extra fields if present
         if hasattr(record, "user_id"):
             log_data["user_id"] = record.user_id
@@ -39,17 +39,17 @@ class JSONFormatter(logging.Formatter):
             log_data["action"] = record.action
         if hasattr(record, "data"):
             log_data["data"] = record.data
-        
+
         # Add exception info if present
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
-        
+
         return json.dumps(log_data)
 
 
 class PrettyFormatter(logging.Formatter):
     """Human-readable format for development."""
-    
+
     COLORS = {
         "DEBUG": "\033[36m",    # Cyan
         "INFO": "\033[32m",     # Green
@@ -58,38 +58,38 @@ class PrettyFormatter(logging.Formatter):
         "CRITICAL": "\033[35m", # Magenta
     }
     RESET = "\033[0m"
-    
+
     def format(self, record: logging.LogRecord) -> str:
         color = self.COLORS.get(record.levelname, "")
         timestamp = datetime.now().strftime("%H:%M:%S")
-        
+
         msg = f"{color}[{timestamp}] {record.levelname:8}{self.RESET} {record.getMessage()}"
-        
+
         # Add context if present
         context_parts = []
         if hasattr(record, "user_id"):
             context_parts.append(f"user={record.user_id}")
         if hasattr(record, "action"):
             context_parts.append(f"action={record.action}")
-        
+
         if context_parts:
             msg += f" ({', '.join(context_parts)})"
-        
+
         return msg
 
 
 class ContextLogger(logging.Logger):
     """Logger with context binding support."""
-    
+
     def __init__(self, name: str, level: int = logging.NOTSET):
         super().__init__(name, level)
         self._context: dict[str, Any] = {}
-    
+
     def bind(self, **kwargs) -> "ContextLogger":
         """Bind context that will be included in all logs."""
         self._context.update(kwargs)
         return self
-    
+
     def _log(self, level, msg, args, exc_info=None, extra=None, **kwargs):
         if extra is None:
             extra = {}
@@ -101,26 +101,26 @@ class ContextLogger(logging.Logger):
 @lru_cache
 def get_logger(name: str = "prodway") -> ContextLogger:
     """Get a configured logger."""
-    
+
     # Use JSON in production, pretty in development
     is_production = os.environ.get("APP_ENV") == "production"
-    
+
     logging.setLoggerClass(ContextLogger)
     logger = logging.getLogger(name)
-    
+
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
-        
+
         if is_production:
             handler.setFormatter(JSONFormatter())
         else:
             handler.setFormatter(PrettyFormatter())
-        
+
         logger.addHandler(handler)
         logger.setLevel(
             getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper())
         )
-    
+
     return logger
 
 
@@ -128,17 +128,17 @@ def get_logger(name: str = "prodway") -> ContextLogger:
 class AuditLogger:
     """
     Audit logger for compliance-sensitive actions.
-    
+
     Records:
     - Who did what
     - When
     - What data was accessed/modified
     - Result (success/failure)
     """
-    
+
     def __init__(self):
         self.logger = get_logger("prodway.audit")
-    
+
     def log_action(
         self,
         action: str,
@@ -163,7 +163,7 @@ class AuditLogger:
                 "audit": True,
             }
         )
-    
+
     def log_sow_generated(self, user_id: str, sow_title: str, pricing: int):
         self.log_action(
             action="sow_generated",
@@ -172,7 +172,7 @@ class AuditLogger:
             resource_type="sow",
             details={"title": sow_title, "pricing": pricing},
         )
-    
+
     def log_sow_sent(self, user_id: str, sow_id: str, client_email: str):
         self.log_action(
             action="sow_sent",
@@ -182,7 +182,7 @@ class AuditLogger:
             resource_id=sow_id,
             details={"client_email_hash": hash(client_email)},  # Don't log PII
         )
-    
+
     def log_payment_created(self, user_id: str, amount: int, invoice_id: str):
         self.log_action(
             action="payment_created",

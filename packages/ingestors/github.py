@@ -29,14 +29,14 @@ class GitHubIngestor:
         self.client = Github(settings.github_token) if settings.github_token else None
 
     async def ingest_commits(
-        self, 
-        repo_name: str, 
+        self,
+        repo_name: str,
         author: str | None = None,
         limit: int = 100
     ) -> list[dict[str, Any]]:
         """
         Ingest commit messages from a repository.
-        
+
         Useful for learning commit message patterns.
         """
         if not self.client:
@@ -46,7 +46,7 @@ class GitHubIngestor:
         try:
             repo = self.client.get_repo(repo_name)
             commits = repo.get_commits(author=author)[:limit] if author else repo.get_commits()[:limit]
-            
+
             messages = []
             for commit in commits:
                 messages.append({
@@ -63,7 +63,7 @@ class GitHubIngestor:
                         "files_changed": len(commit.files) if commit.files else 0,
                     },
                 })
-            
+
             logger.info("Ingested commits", repo=repo_name, count=len(messages))
             return messages
 
@@ -72,14 +72,14 @@ class GitHubIngestor:
             return []
 
     async def ingest_pr_reviews(
-        self, 
+        self,
         repo_name: str,
         author: str | None = None,
         limit: int = 50
     ) -> list[dict[str, Any]]:
         """
         Ingest pull request reviews.
-        
+
         Captures code review patterns and feedback style.
         """
         if not self.client:
@@ -89,16 +89,16 @@ class GitHubIngestor:
         try:
             repo = self.client.get_repo(repo_name)
             pulls = repo.get_pulls(state="all")[:limit]
-            
+
             reviews = []
             for pr in pulls:
                 for review in pr.get_reviews():
                     if author and review.user.login != author:
                         continue
-                    
+
                     if not review.body:  # Skip empty reviews
                         continue
-                    
+
                     reviews.append({
                         "source": Source.GITHUB,
                         "message_type": MessageType.PR_REVIEW,
@@ -112,7 +112,7 @@ class GitHubIngestor:
                             "state": review.state,  # APPROVED, CHANGES_REQUESTED, etc.
                         },
                     })
-            
+
             logger.info("Ingested PR reviews", repo=repo_name, count=len(reviews))
             return reviews
 
@@ -121,14 +121,14 @@ class GitHubIngestor:
             return []
 
     async def ingest_review_comments(
-        self, 
+        self,
         repo_name: str,
         author: str | None = None,
         limit: int = 100
     ) -> list[dict[str, Any]]:
         """
         Ingest inline code review comments.
-        
+
         These are the specific line-by-line feedback comments.
         """
         if not self.client:
@@ -138,12 +138,12 @@ class GitHubIngestor:
         try:
             repo = self.client.get_repo(repo_name)
             comments = repo.get_pulls_review_comments()[:limit]
-            
+
             result = []
             for comment in comments:
                 if author and comment.user.login != author:
                     continue
-                
+
                 result.append({
                     "source": Source.GITHUB,
                     "message_type": MessageType.PR_REVIEW,
@@ -157,7 +157,7 @@ class GitHubIngestor:
                         "diff_hunk": comment.diff_hunk[:200] if comment.diff_hunk else None,
                     },
                 })
-            
+
             logger.info("Ingested review comments", repo=repo_name, count=len(result))
             return result
 
@@ -166,13 +166,13 @@ class GitHubIngestor:
             return []
 
     async def ingest_all_activity(
-        self, 
+        self,
         username: str,
         repos: list[str] | None = None
     ) -> dict[str, list[dict[str, Any]]]:
         """
         Ingest all GitHub activity for a user.
-        
+
         Returns organized by type: commits, reviews, comments.
         """
         if not self.client:
@@ -205,5 +205,5 @@ class GitHubIngestor:
             reviews=len(result["reviews"]),
             comments=len(result["comments"]),
         )
-        
+
         return result

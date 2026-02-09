@@ -53,7 +53,7 @@ python main.py
 In any Slack channel:
 
 ```
-/sow Need K8s migration for startup, currently on EC2 with 50k daily users, 
+/sow Need K8s migration for startup, currently on EC2 with 50k daily users,
 need to scale to 500k. Timeline: 6 weeks.
 ```
 
