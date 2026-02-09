@@ -123,7 +123,10 @@ pip install -r requirements.txt
 
 - **Python:** Type hints, docstrings, clean functions
 - **HTML/CSS:** Semantic HTML, mobile-first, dark theme
-- **Git:** Conventional commits, clear messages
+- **Git:** **VERY CONCISE** commit messages. Examples:
+  - `feat: add trusted-by section`
+  - `fix: update logo styling`
+  - `refactor: rename DealFlow to SowFlow`
 - **Documentation:** Keep it updated, keep it clean
 
 ---
