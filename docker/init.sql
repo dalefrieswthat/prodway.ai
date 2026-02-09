@@ -56,21 +56,21 @@ CREATE TABLE messages (
     org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
     project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    
+
     source VARCHAR(50) NOT NULL,  -- slack, github, gmail, cursor, etc.
     message_type VARCHAR(50) NOT NULL,  -- chat, email, commit, pr_review, document
-    
+
     content TEXT NOT NULL,
     content_hash VARCHAR(64),  -- For deduplication
-    
+
     author VARCHAR(255),
     author_id VARCHAR(255),
     channel VARCHAR(255),
-    
+
     metadata JSONB DEFAULT '{}',
-    
+
     embedding_id VARCHAR(255),  -- Reference to vector store
-    
+
     timestamp TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -80,17 +80,17 @@ CREATE TABLE patterns (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    
+
     pattern_type VARCHAR(50) NOT NULL,  -- communication, code_style, template
     name VARCHAR(255),
     description TEXT,
     examples TEXT[],
-    
+
     embedding_id VARCHAR(255),
-    
+
     frequency INTEGER DEFAULT 1,
     confidence FLOAT DEFAULT 0.5,
-    
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -100,21 +100,21 @@ CREATE TABLE drafts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    
+
     draft_type VARCHAR(50) NOT NULL,  -- slack, email, pr_review
     target_platform VARCHAR(50),
     target_id VARCHAR(255),  -- channel ID, email address, PR number
-    
+
     context TEXT NOT NULL,  -- Original message/situation
     content TEXT NOT NULL,  -- Generated draft
-    
+
     confidence FLOAT,
     sources_used TEXT[],
-    
+
     status VARCHAR(20) DEFAULT 'pending',  -- pending, approved, rejected, sent
     edits TEXT,  -- User edits before sending
     feedback TEXT,  -- User feedback for learning
-    
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     approved_at TIMESTAMP WITH TIME ZONE,
     sent_at TIMESTAMP WITH TIME ZONE
@@ -125,13 +125,13 @@ CREATE TABLE audit_log (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    
+
     action VARCHAR(100) NOT NULL,
     resource_type VARCHAR(50),
     resource_id UUID,
-    
+
     details JSONB DEFAULT '{}',
-    
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

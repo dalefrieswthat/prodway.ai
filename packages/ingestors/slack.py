@@ -31,7 +31,7 @@ class SlackIngestor:
     async def ingest_export(self, export_path: Path) -> list[dict[str, Any]]:
         """
         Ingest a Slack workspace export.
-        
+
         Export structure:
         export/
         ├── channels.json
@@ -41,7 +41,7 @@ class SlackIngestor:
             └── 2024-01-02.json
         """
         messages = []
-        
+
         if not export_path.exists():
             logger.error("Export path does not exist", path=str(export_path))
             return messages
@@ -60,21 +60,21 @@ class SlackIngestor:
                 continue
 
             channel_name = channel_dir.name
-            
+
             # Process each day's messages
             for msg_file in channel_dir.glob("*.json"):
                 try:
                     with open(msg_file) as f:
                         day_messages = json.load(f)
-                    
+
                     for msg in day_messages:
                         if msg.get("subtype") in ["channel_join", "channel_leave", "bot_message"]:
                             continue
-                        
+
                         processed = self._process_message(msg, channel_name, users)
                         if processed:
                             messages.append(processed)
-                
+
                 except Exception as e:
                     logger.error("Failed to process message file", file=str(msg_file), error=str(e))
 
@@ -82,9 +82,9 @@ class SlackIngestor:
         return messages
 
     def _process_message(
-        self, 
-        msg: dict[str, Any], 
-        channel: str, 
+        self,
+        msg: dict[str, Any],
+        channel: str,
         users: dict[str, str]
     ) -> dict[str, Any] | None:
         """Process a single Slack message."""
@@ -111,8 +111,8 @@ class SlackIngestor:
         }
 
     async def fetch_recent_messages(
-        self, 
-        channel_id: str, 
+        self,
+        channel_id: str,
         limit: int = 100
     ) -> list[dict[str, Any]]:
         """Fetch recent messages from a channel via API."""
@@ -125,15 +125,15 @@ class SlackIngestor:
                 channel=channel_id,
                 limit=limit,
             )
-            
+
             messages = []
             for msg in result.get("messages", []):
                 processed = self._process_message(msg, channel_id, {})
                 if processed:
                     messages.append(processed)
-            
+
             return messages
-        
+
         except SlackApiError as e:
             logger.error("Slack API error", error=str(e))
             return []
@@ -141,7 +141,7 @@ class SlackIngestor:
     async def get_my_messages(self, user_id: str, limit: int = 500) -> list[dict[str, Any]]:
         """
         Get messages authored by a specific user.
-        
+
         This is useful for learning the user's communication patterns.
         """
         if not self.client:
@@ -153,7 +153,7 @@ class SlackIngestor:
                 query=f"from:<@{user_id}>",
                 count=limit,
             )
-            
+
             messages = []
             for match in result.get("messages", {}).get("matches", []):
                 messages.append({
@@ -166,7 +166,7 @@ class SlackIngestor:
                         "permalink": match.get("permalink"),
                     },
                 })
-            
+
             return messages
 
         except SlackApiError as e:
