@@ -295,7 +295,11 @@
             border-radius: 12px;
             transition: all 0.3s;
             backdrop-filter: blur(10px);
-            min-width: 180px;
+            min-width: 200px;
+        }
+
+        .trusted-logo svg {
+            flex-shrink: 0;
         }
 
         .trusted-logo:hover {
@@ -729,12 +733,25 @@
             </h2>
             <div class="trusted-by-logos">
                 <div class="trusted-logo logo-yc-container">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="margin-right: 0.5rem;">
+                        <rect x="2" y="2" width="20" height="20" rx="4" fill="#FF6B35"/>
+                        <path d="M12 6L8 10H11V18H13V10H16L12 6Z" fill="white"/>
+                    </svg>
                     <span class="logo-yc">Y Combinator</span>
                 </div>
                 <div class="trusted-logo logo-antler-container">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="margin-right: 0.5rem;">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor"/>
+                        <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
                     <span class="logo-antler">Antler</span>
                 </div>
                 <div class="trusted-logo logo-a16z-container">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="margin-right: 0.5rem;">
+                        <circle cx="12" cy="12" r="10" fill="currentColor"/>
+                        <path d="M8 8H16V10H10V12H15V14H10V16H16V18H8V8Z" fill="white"/>
+                    </svg>
                     <span class="logo-a16z">a16z</span>
                 </div>
             </div>
