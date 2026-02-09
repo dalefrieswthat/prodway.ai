@@ -55,3 +55,6 @@ docker-compose.override.yml
 *.tfstate
 *.tfstate.*
 *.tfplan
+
+# Documentation (may contain confidential info)
+claude.md
