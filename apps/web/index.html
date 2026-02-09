@@ -298,6 +298,28 @@
             min-width: 200px;
         }
 
+        .logo-img {
+            max-height: 40px;
+            max-width: 200px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .logo-yc-img {
+            max-height: 36px;
+        }
+
+        .logo-antler-img {
+            filter: brightness(0) invert(1);
+            max-height: 32px;
+        }
+
+        .logo-a16z-img {
+            filter: brightness(0) invert(1);
+            max-height: 32px;
+        }
+
         .trusted-logo:hover {
             background: rgba(255, 255, 255, 0.06);
             transform: translateY(-2px);
@@ -730,13 +752,16 @@
             </h2>
             <div class="trusted-by-logos">
                 <div class="trusted-logo logo-yc-container">
-                    <span class="logo-yc">Y Combinator</span>
+                    <img src="https://cdn.simpleicons.org/ycombinator/F26522" alt="Y Combinator" class="logo-img logo-yc-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                    <span class="logo-yc" style="display:none;">Y Combinator</span>
                 </div>
                 <div class="trusted-logo logo-antler-container">
-                    <span class="logo-antler">Antler</span>
+                    <img src="https://www.antler.co/favicon.ico" alt="Antler" class="logo-img logo-antler-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                    <span class="logo-antler" style="display:none;">Antler</span>
                 </div>
                 <div class="trusted-logo logo-a16z-container">
-                    <span class="logo-a16z">a16z</span>
+                    <img src="https://a16z.com/favicon.ico" alt="a16z" class="logo-img logo-a16z-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                    <span class="logo-a16z" style="display:none;">a16z</span>
                 </div>
             </div>
             <p class="trusted-by-description">We scale infrastructure for funded startups. We understand the challenges that come with rapid growth—because we've been there.</p>
