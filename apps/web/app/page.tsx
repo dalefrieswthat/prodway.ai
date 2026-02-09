@@ -27,17 +27,17 @@ export default function Home() {
             </svg>
             Now in Private Beta
           </div>
-          
+
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
             Scale your agency
             <br />
             <span className="gradient-text">without hiring</span>
           </h1>
-          
+
           <p className="text-xl text-[#a3a3a3] max-w-2xl mx-auto mb-10">
             AI tools that handle the boring parts—proposals, contracts, invoicing—so you can focus on the work that matters.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="mailto:dale@prodway.ai" className="px-6 py-3 bg-green-500 text-black font-medium rounded-lg hover:bg-green-400 transition-colors inline-flex items-center justify-center gap-2">
               Request Access
@@ -94,7 +94,7 @@ export default function Home() {
                   <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-500 rounded-full">Live</span>
                 </div>
               </div>
-              
+
               <p className="text-[#a3a3a3] mb-6">
                 Generate professional SOWs from a single Slack command. Send for signature. Invoice automatically.
               </p>
@@ -136,7 +136,7 @@ export default function Home() {
                   <h3 className="text-2xl font-bold">FormPilot</h3>
                 </div>
               </div>
-              
+
               <p className="text-[#a3a3a3] mb-6">
                 Chrome extension that auto-fills any form with your company data. YC applications, vendor forms, RFPs—done in seconds.
               </p>

@@ -106,7 +106,7 @@ You should see:
 In any Slack channel, type:
 
 ```
-/sow K8s migration for funded startup, currently on EC2 with 50k daily users, 
+/sow K8s migration for funded startup, currently on EC2 with 50k daily users,
 need infrastructure to scale to 500k. Looking for 6 week timeline.
 ```
 

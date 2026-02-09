@@ -30,17 +30,17 @@ export default function Home() {
               Now in Private Beta
             </Badge>
           </div>
-          
+
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 animate-slide-up delay-100">
             Scale your agency
             <br />
             <span className="gradient-text">without hiring</span>
           </h1>
-          
+
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-slide-up delay-200">
             AI tools that handle the boring parts—proposals, contracts, invoicing—so you can focus on the work that matters.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up delay-300">
             <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2">
               Request Access <ArrowRight className="w-4 h-4" />
@@ -93,7 +93,7 @@ export default function Home() {
                     <Badge className="bg-primary/20 text-primary border-0 text-xs">Live</Badge>
                   </div>
                 </div>
-                
+
                 <p className="text-muted-foreground mb-6">
                   Generate professional SOWs from a single Slack command. Send for signature. Invoice automatically.
                 </p>
@@ -131,7 +131,7 @@ export default function Home() {
                     <h3 className="text-2xl font-bold">FormPilot</h3>
                   </div>
                 </div>
-                
+
                 <p className="text-muted-foreground mb-6">
                   Chrome extension that auto-fills any form with your company data. YC applications, vendor forms, RFPs—done in seconds.
                 </p>

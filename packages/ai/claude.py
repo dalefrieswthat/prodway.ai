@@ -96,7 +96,7 @@ class ClaudeClient:
     ) -> DraftResponse:
         """
         Generate a draft response using Claude.
-        
+
         Args:
             request: The draft request with context and type
             context: Relevant context retrieved from RAG
@@ -106,7 +106,7 @@ class ClaudeClient:
 
         # Build the system prompt
         base_prompt = SYSTEM_PROMPTS.get(request.draft_type, SYSTEM_PROMPTS[MessageType.CHAT])
-        
+
         if request.tone:
             base_prompt += f"\n\nTone adjustment: {request.tone}"
 
@@ -153,7 +153,7 @@ Generate a draft that Dale would send. Just the draft, no meta-commentary."""
     async def analyze_patterns(self, messages: list[str]) -> dict[str, Any]:
         """
         Analyze a set of messages to extract communication patterns.
-        
+
         This is used for learning and improving the drafting system.
         """
         if not self.client:

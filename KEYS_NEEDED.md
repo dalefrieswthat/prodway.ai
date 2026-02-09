@@ -48,7 +48,7 @@ Socket Mode: Enabled
 ### 5. Database (for persistence)
 Options:
 - **Supabase** (Postgres, free tier): [supabase.com](https://supabase.com)
-- **PlanetScale** (MySQL): [planetscale.com](https://planetscale.com)  
+- **PlanetScale** (MySQL): [planetscale.com](https://planetscale.com)
 - **Neon** (Postgres): [neon.tech](https://neon.tech)
 
 Variable: `DATABASE_URL`

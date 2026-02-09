@@ -39,7 +39,7 @@ class CursorContextHandler(FileSystemEventHandler):
     def on_modified(self, event: FileSystemEvent) -> None:
         if event.is_directory:
             return
-        
+
         path = Path(event.src_path)
         if not self._should_process(path):
             return
@@ -50,7 +50,7 @@ class CursorContextHandler(FileSystemEventHandler):
 
         self._processed_hashes.add(file_hash)
         logger.info("Context file modified", path=str(path))
-        
+
         try:
             content = path.read_text()
             self.callback(path, content)
@@ -83,7 +83,7 @@ class CursorContextIngestor:
 
     async def start(self, on_content: Callable[[Path, str, Source], None]) -> None:
         """Start watching all configured context paths."""
-        
+
         def callback(path: Path, content: str) -> None:
             on_content(path, content, Source.CURSOR)
 
@@ -93,7 +93,7 @@ class CursorContextIngestor:
                 continue
 
             logger.info("Starting watcher", path=str(context_path))
-            
+
             handler = CursorContextHandler(callback)
             observer = Observer()
             observer.schedule(handler, str(context_path), recursive=True)
@@ -106,8 +106,8 @@ class CursorContextIngestor:
         logger.info("Context watchers started", count=len(self.observers))
 
     async def _scan_existing(
-        self, 
-        path: Path, 
+        self,
+        path: Path,
         callback: Callable[[Path, str], None]
     ) -> None:
         """Scan existing files in a context folder."""
@@ -130,7 +130,7 @@ class CursorContextIngestor:
 
 async def main():
     """Test the cursor context ingestor."""
-    
+
     def on_content(path: Path, content: str, source: Source) -> None:
         print(f"[{source}] {path.name}: {len(content)} chars")
 

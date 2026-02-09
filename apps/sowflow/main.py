@@ -8,7 +8,7 @@ Usage in Slack:
 
 Returns:
   - Structured SOW draft
-  - Pricing recommendation  
+  - Pricing recommendation
   - One-click actions: Edit | Send | Dismiss
 """
 
@@ -47,7 +47,7 @@ Given a project description, generate a structured SOW with:
 
 Pricing guidelines:
 - Simple (1-2 weeks): $5,000 - $15,000
-- Medium (3-4 weeks): $15,000 - $35,000  
+- Medium (3-4 weeks): $15,000 - $35,000
 - Complex (5-8 weeks): $35,000 - $75,000
 - Enterprise (8+ weeks): $75,000+
 
@@ -82,7 +82,7 @@ Return as JSON with this structure:
 
 def generate_sow(description: str) -> dict:
     """Generate a SOW from a project description using Claude."""
-    
+
     response = claude.messages.create(
         model="claude-sonnet-4-20250514",
         max_tokens=2000,
@@ -92,15 +92,15 @@ def generate_sow(description: str) -> dict:
             "content": f"Generate a SOW for this project:\n\n{description}"
         }]
     )
-    
+
     # Extract JSON from response
     content = response.content[0].text
-    
+
     # Try to parse JSON (handle markdown code blocks)
     json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', content)
     if json_match:
         content = json_match.group(1)
-    
+
     try:
         sow = json.loads(content)
     except json.JSONDecodeError:
@@ -113,13 +113,13 @@ def generate_sow(description: str) -> dict:
             "timeline": [{"phase": "TBD", "duration": "TBD", "description": "TBD"}],
             "pricing": {"total": 0, "currency": "USD", "structure": "TBD"}
         }
-    
+
     return sow
 
 
 def format_sow_for_slack(sow: dict) -> list:
     """Format SOW as Slack blocks."""
-    
+
     blocks = [
         {
             "type": "header",
@@ -131,19 +131,19 @@ def format_sow_for_slack(sow: dict) -> list:
         },
         {"type": "divider"},
     ]
-    
+
     # Scope
     scope_items = sow.get('scope', [])
     if scope_items:
         scope_text = "*Scope of Work*\n" + "\n".join(f"• {item}" for item in scope_items[:8])
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": scope_text}})
-    
+
     # Deliverables
     deliverables = sow.get('deliverables', [])
     if deliverables:
         del_text = "*Deliverables*\n" + "\n".join(f"✓ {item}" for item in deliverables[:6])
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": del_text}})
-    
+
     # Timeline
     timeline = sow.get('timeline', [])
     if timeline:
@@ -151,14 +151,14 @@ def format_sow_for_slack(sow: dict) -> list:
         for phase in timeline[:5]:
             timeline_text += f"• *{phase.get('phase', 'Phase')}* ({phase.get('duration', 'TBD')})\n"
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": timeline_text}})
-    
+
     blocks.append({"type": "divider"})
-    
+
     # Pricing (prominent)
     pricing = sow.get('pricing', {})
     total = pricing.get('total', 0)
     structure = pricing.get('structure', 'TBD')
-    
+
     blocks.append({
         "type": "section",
         "text": {
@@ -166,7 +166,7 @@ def format_sow_for_slack(sow: dict) -> list:
             "text": f"💰 *Pricing*\n\n*Total: ${total:,.0f} USD*\n{structure}"
         }
     })
-    
+
     # Payment schedule
     schedule = pricing.get('payment_schedule', [])
     if schedule:
@@ -178,9 +178,9 @@ def format_sow_for_slack(sow: dict) -> list:
             "type": "context",
             "elements": [{"type": "mrkdwn", "text": schedule_text}]
         })
-    
+
     blocks.append({"type": "divider"})
-    
+
     # Action buttons
     blocks.append({
         "type": "actions",
@@ -206,7 +206,7 @@ def format_sow_for_slack(sow: dict) -> list:
             }
         ]
     })
-    
+
     return blocks
 
 
@@ -218,40 +218,40 @@ def format_sow_for_slack(sow: dict) -> list:
 def handle_sow_command(ack, command, respond):
     """Handle /sow slash command."""
     ack()
-    
+
     description = command.get("text", "").strip()
-    
+
     if not description:
         respond({
             "response_type": "ephemeral",
             "text": "Please provide a project description.\n\nExample: `/sow K8s migration for startup, 50k users, need to scale to 500k, 6 week timeline`"
         })
         return
-    
+
     # Show loading message
     respond({
         "response_type": "ephemeral",
         "text": "🔄 Generating SOW... (this takes about 5 seconds)"
     })
-    
+
     try:
         # Generate SOW
         sow = generate_sow(description)
-        
+
         # Store the original request
         sow['_original_request'] = description
         sow['_generated_at'] = datetime.now().isoformat()
         sow['_generated_by'] = command.get('user_id')
-        
+
         # Format and send
         blocks = format_sow_for_slack(sow)
-        
+
         respond({
             "response_type": "in_channel",  # Visible to channel
             "blocks": blocks,
             "text": f"SOW Generated: {sow.get('title', 'Project Proposal')}"
         })
-        
+
     except Exception as e:
         respond({
             "response_type": "ephemeral",
@@ -263,10 +263,10 @@ def handle_sow_command(ack, command, respond):
 def handle_send_sow(ack, body, client, respond):
     """Handle 'Send to Client' button click."""
     ack()
-    
+
     # Get SOW data from button value
     sow = json.loads(body["actions"][0]["value"])
-    
+
     # For MVP: Open a modal to get client email
     client.views_open(
         trigger_id=body["trigger_id"],
@@ -316,19 +316,19 @@ def handle_send_sow(ack, body, client, respond):
 def handle_send_sow_submit(ack, body, client, view):
     """Handle SOW send modal submission."""
     ack()
-    
+
     sow = json.loads(view["private_metadata"])
     values = view["state"]["values"]
-    
+
     client_email = values["client_email"]["email_input"]["value"]
     client_name = values["client_name"]["name_input"]["value"]
     company_name = values["company_name"]["company_input"]["value"]
-    
+
     user_id = body["user"]["id"]
-    
+
     # TODO: Integrate with DocuSign here
     # For now, just confirm
-    
+
     client.chat_postMessage(
         channel=user_id,
         text=f"✅ *SOW Ready to Send*\n\n"
@@ -344,9 +344,9 @@ def handle_send_sow_submit(ack, body, client, view):
 def handle_edit_sow(ack, body, client):
     """Handle 'Edit' button click."""
     ack()
-    
+
     sow = json.loads(body["actions"][0]["value"])
-    
+
     # Open modal with editable fields
     client.views_open(
         trigger_id=body["trigger_id"],
@@ -411,9 +411,9 @@ def handle_dismiss_sow(ack, respond):
 if __name__ == "__main__":
     print("⚡ Starting SowFlow Slack Bot...")
     print("   Use /sow <description> to generate a Statement of Work")
-    
+
     handler = SocketModeHandler(
-        app, 
+        app,
         os.environ.get("SLACK_APP_TOKEN")
     )
     handler.start()

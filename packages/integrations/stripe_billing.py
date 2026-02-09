@@ -25,17 +25,17 @@ async def create_payment_link(
 ) -> dict:
     """
     Create a Stripe payment link for a SOW.
-    
+
     For milestone-based payments, creates multiple links.
-    
+
     Returns:
         {"payment_link": "https://...", "amount": 15000, ...}
     """
-    
+
     pricing = sow.get("pricing", {})
     total = pricing.get("total", 0)
     title = sow.get("title", "Project")
-    
+
     # Create a product for this SOW
     product = stripe.Product.create(
         name=f"SOW: {title}",
@@ -46,14 +46,14 @@ async def create_payment_link(
             "client_name": client_name,
         },
     )
-    
+
     # Create price (in cents)
     price = stripe.Price.create(
         product=product.id,
         unit_amount=int(total * 100),
         currency="usd",
     )
-    
+
     # Create payment link
     payment_link = stripe.PaymentLink.create(
         line_items=[{"price": price.id, "quantity": 1}],
@@ -66,7 +66,7 @@ async def create_payment_link(
             "redirect": {"url": "https://prodway.ai/thank-you"},
         },
     )
-    
+
     return {
         "payment_link": payment_link.url,
         "amount": total,
@@ -83,15 +83,15 @@ async def create_invoice(
 ) -> dict:
     """
     Create a Stripe invoice for a SOW.
-    
+
     Returns:
         {"invoice_id": "in_xxx", "invoice_url": "https://...", ...}
     """
-    
+
     pricing = sow.get("pricing", {})
     total = pricing.get("total", 0)
     title = sow.get("title", "Project")
-    
+
     # Create or get customer
     customers = stripe.Customer.list(email=client_email, limit=1)
     if customers.data:
@@ -102,7 +102,7 @@ async def create_invoice(
             name=client_name,
             metadata={"source": "sowflow"},
         )
-    
+
     # Create invoice
     invoice = stripe.Invoice.create(
         customer=customer.id,
@@ -112,7 +112,7 @@ async def create_invoice(
             "sow_title": title,
         },
     )
-    
+
     # Add line item
     stripe.InvoiceItem.create(
         customer=customer.id,
@@ -121,11 +121,11 @@ async def create_invoice(
         currency="usd",
         description=f"Statement of Work: {title}",
     )
-    
+
     # Finalize and send
     invoice = stripe.Invoice.finalize_invoice(invoice.id)
     stripe.Invoice.send_invoice(invoice.id)
-    
+
     return {
         "invoice_id": invoice.id,
         "invoice_url": invoice.hosted_invoice_url,
@@ -142,18 +142,18 @@ async def create_milestone_invoices(
 ) -> list[dict]:
     """
     Create multiple invoices for milestone-based payments.
-    
+
     Returns list of invoice details.
     """
-    
+
     pricing = sow.get("pricing", {})
     payment_schedule = pricing.get("payment_schedule", [])
     title = sow.get("title", "Project")
-    
+
     if not payment_schedule:
         # Fall back to single invoice
         return [await create_invoice(sow, client_email, client_name)]
-    
+
     # Create or get customer
     customers = stripe.Customer.list(email=client_email, limit=1)
     if customers.data:
@@ -164,17 +164,17 @@ async def create_milestone_invoices(
             name=client_name,
             metadata={"source": "sowflow"},
         )
-    
+
     invoices = []
-    
+
     for i, milestone in enumerate(payment_schedule):
         amount = milestone.get("amount", 0)
         milestone_name = milestone.get("milestone", f"Milestone {i+1}")
-        
+
         # Only create/send first invoice immediately
         # Others are created as drafts
         send_now = (i == 0) or milestone.get("due") == "Upon signing"
-        
+
         invoice = stripe.Invoice.create(
             customer=customer.id,
             collection_method="send_invoice",
@@ -185,7 +185,7 @@ async def create_milestone_invoices(
                 "milestone_index": str(i),
             },
         )
-        
+
         stripe.InvoiceItem.create(
             customer=customer.id,
             invoice=invoice.id,
@@ -193,14 +193,14 @@ async def create_milestone_invoices(
             currency="usd",
             description=f"{title} - {milestone_name}",
         )
-        
+
         if send_now:
             invoice = stripe.Invoice.finalize_invoice(invoice.id)
             stripe.Invoice.send_invoice(invoice.id)
             status = "sent"
         else:
             status = "draft"
-        
+
         invoices.append({
             "invoice_id": invoice.id,
             "invoice_url": invoice.hosted_invoice_url if send_now else None,
@@ -208,7 +208,7 @@ async def create_milestone_invoices(
             "milestone": milestone_name,
             "status": status,
         })
-    
+
     return invoices
 
 
@@ -220,16 +220,16 @@ async def quick_payment_link(
     client_email: str = None,
 ) -> str:
     """Create a quick payment link for a given amount."""
-    
+
     product = stripe.Product.create(name=description)
     price = stripe.Price.create(
         product=product.id,
         unit_amount=amount * 100,
         currency="usd",
     )
-    
+
     link = stripe.PaymentLink.create(
         line_items=[{"price": price.id, "quantity": 1}],
     )
-    
+
     return link.url

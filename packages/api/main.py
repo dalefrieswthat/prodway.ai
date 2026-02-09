@@ -16,14 +16,14 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     logger.info("Starting Context Engine", env=settings.app_env)
-    
+
     # Startup: Initialize connections
     # TODO: Initialize database pool
     # TODO: Initialize Pinecone client
     # TODO: Initialize Redis connection
-    
+
     yield
-    
+
     # Shutdown: Clean up
     logger.info("Shutting down Context Engine")
 
