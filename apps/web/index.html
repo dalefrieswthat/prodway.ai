@@ -224,6 +224,72 @@
             margin-top: 0.25rem;
         }
         
+        /* Trusted By */
+        .trusted-by {
+            padding: 4rem 1.5rem;
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .trusted-by-content {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        .trusted-by-label {
+            font-size: 0.875rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 2rem;
+        }
+        
+        .trusted-by-logos {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .trusted-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .trusted-logo .logo-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--fg);
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        
+        .trusted-logo:hover .logo-text {
+            opacity: 1;
+        }
+        
+        .trusted-by-description {
+            font-size: 0.9375rem;
+            color: var(--muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        @media (max-width: 640px) {
+            .trusted-by-logos {
+                gap: 1.5rem;
+            }
+            
+            .trusted-logo .logo-text {
+                font-size: 1rem;
+            }
+        }
+        
         /* Products */
         .products {
             padding: 6rem 1.5rem;
@@ -545,6 +611,28 @@
                 <div class="stat-value">0</div>
                 <div class="stat-label">Admin Hours</div>
             </div>
+        </div>
+    </section>
+
+    <!-- Trusted By -->
+    <section class="trusted-by">
+        <div class="trusted-by-content">
+            <p class="trusted-by-label">Built by the team that scales infrastructure for</p>
+            <div class="trusted-by-logos">
+                <div class="trusted-logo">
+                    <span class="logo-text">YC</span>
+                </div>
+                <div class="trusted-logo">
+                    <span class="logo-text">Antler</span>
+                </div>
+                <div class="trusted-logo">
+                    <span class="logo-text">Venture-Backed</span>
+                </div>
+                <div class="trusted-logo">
+                    <span class="logo-text">Startups</span>
+                </div>
+            </div>
+            <p class="trusted-by-description">We understand the infrastructure challenges that come with rapid growth.</p>
         </div>
     </section>
 
