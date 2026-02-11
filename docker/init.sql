@@ -135,6 +135,74 @@ CREATE TABLE audit_log (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- ============================================================
+-- SowFlow: SOW Generation & Deal Flow
+-- ============================================================
+
+-- Slack workspace installations (multi-tenant via OAuth)
+CREATE TABLE slack_installations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id VARCHAR(50) UNIQUE NOT NULL,       -- Slack workspace ID
+    team_name VARCHAR(255),
+    bot_token TEXT NOT NULL,                    -- Encrypted bot OAuth token
+    bot_user_id VARCHAR(50),
+    installer_user_id VARCHAR(50),
+    scopes TEXT[],
+    is_active BOOLEAN DEFAULT true,
+    installed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Generated SOWs
+CREATE TABLE sows (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    short_id VARCHAR(8) UNIQUE NOT NULL,       -- Human-friendly ID
+    team_id VARCHAR(50) NOT NULL,              -- Slack workspace
+    created_by VARCHAR(50),                    -- Slack user ID
+    channel_id VARCHAR(50),                    -- Where /sow was run
+
+    -- SOW content
+    title VARCHAR(255),
+    executive_summary TEXT,
+    content JSONB NOT NULL,                    -- Full SOW data (scope, deliverables, etc.)
+    original_request TEXT,                     -- What the user typed in /sow
+
+    -- Client info
+    client_name VARCHAR(255),
+    client_email VARCHAR(255),
+    company_name VARCHAR(255),
+
+    -- Pricing
+    total_value DECIMAL(12,2),
+    currency VARCHAR(3) DEFAULT 'USD',
+    pricing_structure JSONB,
+
+    -- Integration references
+    docusign_envelope_id VARCHAR(255),
+    stripe_payment_url TEXT,
+    stripe_invoice_id VARCHAR(255),
+
+    -- Status tracking
+    status VARCHAR(50) DEFAULT 'draft',        -- draft, sent, viewed, signed, paid, dismissed
+    sent_at TIMESTAMP WITH TIME ZONE,
+    viewed_at TIMESTAMP WITH TIME ZONE,
+    signed_at TIMESTAMP WITH TIME ZONE,
+    paid_at TIMESTAMP WITH TIME ZONE,
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- SOW activity log
+CREATE TABLE sow_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sow_id UUID REFERENCES sows(id) ON DELETE CASCADE,
+    event_type VARCHAR(50) NOT NULL,           -- created, sent, signed, paid, edited, dismissed
+    actor VARCHAR(255),                        -- Who performed the action
+    details JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Indexes
 CREATE INDEX idx_messages_org_id ON messages(org_id);
 CREATE INDEX idx_messages_source ON messages(source);
@@ -150,6 +218,14 @@ CREATE INDEX idx_drafts_status ON drafts(status);
 CREATE INDEX idx_audit_log_org_id ON audit_log(org_id);
 CREATE INDEX idx_audit_log_created_at ON audit_log(created_at DESC);
 
+-- SowFlow indexes
+CREATE INDEX idx_slack_installations_team_id ON slack_installations(team_id);
+CREATE INDEX idx_sows_team_id ON sows(team_id);
+CREATE INDEX idx_sows_short_id ON sows(short_id);
+CREATE INDEX idx_sows_status ON sows(status);
+CREATE INDEX idx_sows_created_at ON sows(created_at DESC);
+CREATE INDEX idx_sow_events_sow_id ON sow_events(sow_id);
+
 -- Row Level Security (for multi-tenancy)
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
@@ -159,3 +235,6 @@ ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE patterns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE drafts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE slack_installations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sows ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sow_events ENABLE ROW LEVEL SECURITY;

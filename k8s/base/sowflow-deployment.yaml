@@ -21,7 +21,7 @@ spec:
         - name: sowflow
           image: ghcr.io/dalefrieswthat/prodway.ai/sowflow:latest
           ports:
-            - containerPort: 8000
+            - containerPort: 3000
           env:
             - name: APP_ENV
               value: "production"
@@ -37,22 +37,28 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+          volumeMounts:
+            - name: sowflow-data
+              mountPath: /app/data
           livenessProbe:
             httpGet:
               path: /health
-              port: 8000
+              port: 3000
             initialDelaySeconds: 10
             periodSeconds: 30
           readinessProbe:
             httpGet:
               path: /health
-              port: 8000
+              port: 3000
             initialDelaySeconds: 5
             periodSeconds: 10
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: false
+      volumes:
+        - name: sowflow-data
+          emptyDir: {}
       securityContext:
         fsGroup: 1000

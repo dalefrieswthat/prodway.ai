@@ -1,8 +1,23 @@
-# SowFlow - Slack SOW Bot
+# SowFlow - Marketplace-Ready Slack SOW Bot
+# ==========================================
+
+# Web framework (replaces Socket Mode for Marketplace distribution)
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# Slack (OAuth multi-tenant + event handling)
 slack-bolt>=1.18.0
 slack-sdk>=3.27.0
+
+# AI
 anthropic>=0.18.0
-python-dotenv>=1.0.1
-httpx>=0.26.0
+
+# Integrations
 stripe>=8.0.0
+httpx>=0.26.0
+
+# Security
 cryptography>=42.0.0
+
+# Utilities
+python-dotenv>=1.0.1
