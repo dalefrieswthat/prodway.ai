@@ -17,7 +17,6 @@ RUN useradd -m -u 1000 app && chown -R app:app /app
 
 # Create data directory for file-based storage
 RUN mkdir -p /app/data && chown -R app:app /app/data
-VOLUME ["/app/data"]
 
 USER app
 
