@@ -1,11 +1,11 @@
 # ============================================
-# PRODWAY AI - LOCAL DEVELOPMENT
+# PRODWAY AI / SOWFLOW - ENVIRONMENT VARIABLES
 # Rename this to .env and fill in values
 # ============================================
 
 # ENVIRONMENT
 APP_ENV=development
-LOG_LEVEL=DEBUG
+APP_URL=https://api.prodway.ai
 
 # --------------------------------------------
 # 1. ANTHROPIC (Required)
@@ -14,23 +14,45 @@ LOG_LEVEL=DEBUG
 ANTHROPIC_API_KEY=
 
 # --------------------------------------------
-# 2. SLACK (Required)
-# Create app at: https://api.slack.com/apps
+# 2. SLACK — Marketplace Distribution (Required)
+# Your Slack app at: https://api.slack.com/apps
+#
+# Go to Basic Information → copy these three values.
+# NOTE: SLACK_BOT_TOKEN / SLACK_APP_TOKEN are NOT needed.
+# Each workspace gets its own token via OAuth install.
 # --------------------------------------------
-SLACK_BOT_TOKEN=
-SLACK_APP_TOKEN=
+SLACK_CLIENT_ID=
+SLACK_CLIENT_SECRET=
 SLACK_SIGNING_SECRET=
 
 # --------------------------------------------
-# 3. STRIPE (For invoicing)
-# Get from: https://dashboard.stripe.com/apikeys
-# Use test keys for now (sk_test_...)
+# 3. STRIPE CONNECT (Per-customer invoicing)
+# Platform keys from: https://dashboard.stripe.com/apikeys
+# Connect Client ID from: https://dashboard.stripe.com/settings/connect
+#
+# Customers connect their OWN Stripe accounts via OAuth.
+# Invoices are created on their accounts, not yours.
 # --------------------------------------------
 STRIPE_SECRET_KEY=
+STRIPE_CLIENT_ID=
+STRIPE_WEBHOOK_SECRET=
 
 # --------------------------------------------
-# 4. DOCUSIGN (For e-signatures) - Skip for MVP
+# 4. DOCUSIGN (Per-customer e-signatures)
+# Create app at: https://developers.docusign.com
+#
+# Customers connect their OWN DocuSign accounts via OAuth.
+# SOWs are sent from their accounts for signature.
 # --------------------------------------------
-# DOCUSIGN_INTEGRATION_KEY=
-# DOCUSIGN_ACCOUNT_ID=
-# DOCUSIGN_ACCESS_TOKEN=
+DOCUSIGN_INTEGRATION_KEY=
+DOCUSIGN_SECRET_KEY=
+# Use account-d.docusign.com for dev, account.docusign.com for prod
+DOCUSIGN_AUTH_SERVER=account-d.docusign.com
+# Use demo.docusign.net for dev, docusign.net for prod
+DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi
+
+# --------------------------------------------
+# 5. DATA STORAGE (Optional — defaults to ./data)
+# For production, mount a persistent volume
+# --------------------------------------------
+# DATA_DIR=/app/data
