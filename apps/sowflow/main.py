@@ -677,9 +677,13 @@ def send_docusign_envelope(
         },
     }
 
-    base_uri = ds_creds["base_uri"]
+    base_uri = ds_creds["base_uri"].rstrip("/")
     account_id = ds_creds["account_id"]
     access_token = ds_creds["access_token"]
+    # DocuSign userinfo returns base_uri like "https://demo.docusign.net"
+    # but the API needs "/restapi" appended
+    if not base_uri.endswith("/restapi"):
+        base_uri = f"{base_uri}/restapi"
     api_url = f"{base_uri}/v2.1/accounts/{account_id}"
 
     try:
@@ -1124,7 +1128,17 @@ def handle_send_sow_submit(ack, body, client, view):
         )
 
     save_sow(sow_id, sow)
-    client.chat_postMessage(channel=user_id, text="\n".join(lines))
+
+    # Post confirmation to the channel where /sow was run, fallback to DM
+    channel = sow.get("_channel_id", user_id)
+    try:
+        client.chat_postMessage(channel=channel, text="\n".join(lines))
+    except Exception:
+        # If channel post fails, try DM as ephemeral
+        try:
+            client.chat_postMessage(channel=user_id, text="\n".join(lines))
+        except Exception as e:
+            logger.error(f"Failed to send confirmation: {e}")
 
 
 @bolt_app.action("edit_sow")
