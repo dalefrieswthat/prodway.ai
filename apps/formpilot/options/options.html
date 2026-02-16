@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FormPilot – Company data</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="root">
+    <header class="header">
+      <div class="logo">
+        <img src="../icons/icon48.png" alt="" class="logo-img" width="28" height="28">
+        <div>
+          <h1 class="title">FormPilot</h1>
+          <p class="subtitle">Company data used to auto-fill forms</p>
+        </div>
+      </div>
+    </header>
+    <form class="form" id="profile-form">
+      <div class="field">
+        <label for="companyName">Company name</label>
+        <input type="text" id="companyName" name="companyName" placeholder="Acme Inc." autocomplete="organization">
+      </div>
+      <div class="field">
+        <label for="contactName">Your name</label>
+        <input type="text" id="contactName" name="contactName" placeholder="Jane Smith" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="jane@acme.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" name="phone" placeholder="+1 555 000 0000" autocomplete="tel">
+      </div>
+      <div class="field">
+        <label for="website">Website</label>
+        <input type="url" id="website" name="website" placeholder="https://acme.com" autocomplete="url">
+      </div>
+      <div class="field">
+        <label for="address">Address</label>
+        <input type="text" id="address" name="address" placeholder="123 Main St" autocomplete="street-address">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="city">City</label>
+          <input type="text" id="city" name="city" placeholder="San Francisco" autocomplete="address-level2">
+        </div>
+        <div class="field">
+          <label for="state">State / Region</label>
+          <input type="text" id="state" name="state" placeholder="CA" autocomplete="address-level1">
+        </div>
+        <div class="field">
+          <label for="zip">ZIP / Postcode</label>
+          <input type="text" id="zip" name="zip" placeholder="94102" autocomplete="postal-code">
+        </div>
+      </div>
+      <div class="field">
+        <label for="country">Country</label>
+        <input type="text" id="country" name="country" placeholder="United States" autocomplete="country-name">
+      </div>
+      <div class="field">
+        <label for="linkedinUrl">LinkedIn URL</label>
+        <input type="url" id="linkedinUrl" name="linkedinUrl" placeholder="https://linkedin.com/in/...">
+      </div>
+      <div class="field">
+        <label for="description">Short company description</label>
+        <textarea id="description" name="description" rows="3" placeholder="One sentence about what you do."></textarea>
+      </div>
+      <div class="field context-section">
+        <label for="companyContext">Company context (for investors / YC)</label>
+        <textarea id="companyContext" name="companyContext" rows="6" placeholder="Paste your one-pager, YC application answers, investor memo, or any text that describes your company, traction, problem/solution. FormPilot uses this to fill long-form and custom fields (e.g. “Describe your company”, “Traction”)."></textarea>
+        <span class="hint">Optional. Used by AI to match and fill description, traction, and custom fields.</span>
+        <div class="file-upload">
+          <input type="file" id="contextFile" accept=".txt,.md,.csv,.json" aria-label="Upload file to add to context">
+          <span class="file-hint" id="file-hint">Or upload .txt / .md / .csv to add to context</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="importUrl">Import from URL (optional)</label>
+        <div class="import-row">
+          <input type="url" id="importUrl" name="importUrl" placeholder="https://linkedin.com/company/... or any page">
+          <button type="button" id="import-url-btn" class="btn btn-secondary">Fetch & extract</button>
+        </div>
+        <span class="hint">We’ll fetch the page and extract company/contact info to pre-fill the form.</span>
+      </div>
+      <div class="field">
+        <label class="checkbox-label">
+          <input type="checkbox" id="usageConsent" name="usageConsent" aria-describedby="usageConsentHint">
+          <span>Share anonymous usage to improve the product</span>
+        </label>
+        <span id="usageConsentHint" class="hint">We count how many forms are filled (no personal data). This helps us say &ldquo;we know what scaling teams need&rdquo; and improve FormPilot.</span>
+      </div>
+      <div class="field">
+        <label for="apiBaseUrl">API base URL (optional)</label>
+        <input type="url" id="apiBaseUrl" name="apiBaseUrl" placeholder="https://api.prodway.ai">
+        <span class="hint">Leave default or set your Railway FormPilot API URL.</span>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <span class="save-status" id="save-status" aria-live="polite"></span>
+      </div>
+    </form>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>
