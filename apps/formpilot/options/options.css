@@ -1,32 +1,30 @@
 /**
- * FormPilot options page — Airbnb-quality form layout and tokens.
+ * FormPilot options — Airbnb-quality light theme. Clear labels, high contrast, room to type.
  */
 :root {
-  --bg: #0c0c0c;
-  --bg-input: #141414;
-  --fg: #fafafa;
-  --fg-muted: #a3a3a3;
-  --border: #262626;
-  --primary: #22c55e;
-  --primary-hover: #16a34a;
+  --bg: #ffffff;
+  --bg-input: #f7f7f7;
+  --fg: #222222;
+  --fg-secondary: #717171;
+  --fg-muted: #6b6b6b;
+  --border: #ebebeb;
+  --primary: #ff385c;
+  --primary-hover: #e31c5f;
   --radius: 8px;
+  --radius-lg: 12px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.5;
   color: var(--fg);
   background: var(--bg);
@@ -36,57 +34,32 @@ body {
   margin: 0 auto;
 }
 
-.root {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
+.root { display: flex; flex-direction: column; gap: var(--space-6); }
 
-.header {
-  margin-bottom: var(--space-2);
-}
+.header { margin-bottom: var(--space-2); }
 
-.logo {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
+.logo { display: flex; align-items: flex-start; gap: var(--space-3); }
 
-.logo-img {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  object-fit: contain;
-}
+.logo-img { width: 28px; height: 28px; border-radius: 8px; object-fit: contain; }
 
 .title {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--fg);
   margin-bottom: 2px;
 }
 
-.subtitle {
-  font-size: 13px;
-  color: var(--fg-muted);
-}
+.subtitle { font-size: 14px; color: var(--fg-secondary); }
 
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
+.form { display: flex; flex-direction: column; gap: var(--space-5); }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
 
 .field label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--fg-muted);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
 }
 
 .field input,
@@ -94,29 +67,25 @@ body {
   width: 100%;
   padding: var(--space-3) var(--space-4);
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--fg);
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   transition: border-color 0.2s ease;
+  min-height: 48px;
 }
 
+.field textarea { min-height: 100px; resize: vertical; }
+
 .field input::placeholder,
-.field textarea::placeholder {
-  color: var(--fg-muted);
-  opacity: 0.8;
-}
+.field textarea::placeholder { color: var(--fg-muted); }
 
 .field input:focus,
 .field textarea:focus {
   outline: none;
-  border-color: var(--primary);
-}
-
-.field textarea {
-  resize: vertical;
-  min-height: 80px;
+  border-color: var(--fg);
+  box-shadow: 0 0 0 1px var(--fg);
 }
 
 .row {
@@ -126,90 +95,49 @@ body {
 }
 
 @media (max-width: 480px) {
-  .row {
-    grid-template-columns: 1fr;
-  }
+  .row { grid-template-columns: 1fr; }
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
-}
+.actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-2); }
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: var(--space-2) var(--space-5);
+  min-height: 48px;
+  padding: var(--space-3) var(--space-5);
   font-family: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   border: none;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   cursor: pointer;
   transition: background 0.2s ease;
 }
 
-.btn:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
+.btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 
-.btn-primary {
-  background: var(--primary);
-  color: #050505;
-}
+.btn-primary { background: var(--primary); color: #ffffff; }
 
-.btn-primary:hover {
-  background: var(--primary-hover);
-}
+.btn-primary:hover { background: var(--primary-hover); }
 
-.save-status {
-  font-size: 13px;
-  color: var(--fg-muted);
-}
+.save-status { font-size: 14px; color: var(--fg-secondary); }
 
-.save-status.saved {
-  color: var(--primary);
-}
+.save-status.saved { color: #008a05; }
 
-.hint {
-  font-size: 12px;
-  color: var(--fg-muted);
-  margin-top: 2px;
-}
+.hint { font-size: 13px; color: var(--fg-secondary); margin-top: 2px; }
 
-.context-section textarea {
-  min-height: 120px;
-}
+.context-section textarea { min-height: 140px; }
 
-.file-upload {
-  margin-top: var(--space-2);
-}
+.file-upload { margin-top: var(--space-2); }
 
-.file-upload input[type="file"] {
-  font-size: 13px;
-  color: var(--fg-muted);
-}
+.file-upload input[type="file"] { font-size: 14px; color: var(--fg); }
 
-.file-hint {
-  font-size: 12px;
-  color: var(--fg-muted);
-  margin-left: var(--space-2);
-}
+.file-hint { font-size: 13px; color: var(--fg-secondary); margin-left: var(--space-2); }
 
-.import-row {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-}
+.import-row { display: flex; gap: var(--space-2); align-items: center; }
 
-.import-row input {
-  flex: 1;
-}
+.import-row input { flex: 1; }
 
 .btn-secondary {
   background: var(--border);
@@ -217,6 +145,20 @@ body {
   flex-shrink: 0;
 }
 
-.btn-secondary:hover {
-  background: #404040;
+.btn-secondary:hover { background: #ddd; }
+
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--primary);
 }

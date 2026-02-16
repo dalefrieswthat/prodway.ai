@@ -1,3 +1,5 @@
+import StatsSection from './components/StatsSection';
+
 export default function Home() {
   return (
     <main className="min-h-screen grid-bg font-sans antialiased">
@@ -37,8 +39,11 @@ export default function Home() {
             <span className="gradient-text">without hiring</span>
           </h1>
 
-          <p className="text-lg md:text-xl text-[#a3a3a3] max-w-xl mx-auto mb-10 leading-relaxed">
+          <p className="text-lg md:text-xl text-[#a3a3a3] max-w-xl mx-auto mb-4 leading-relaxed">
             AI tools that handle the boring parts—proposals, contracts, invoicing—so you can focus on the work that matters.
+          </p>
+          <p className="text-base md:text-lg text-[#717171] max-w-xl mx-auto mb-10 leading-relaxed">
+            We&apos;re the company-data layer for forms and SOWs; we get better as more teams use us.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -61,25 +66,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats — scannable */}
-      <section className="py-14 border-y border-[#262626]">
-        <div className="max-w-3xl mx-auto px-5">
-          <div className="grid grid-cols-3 gap-8 text-center">
-            <div>
-              <div className="text-3xl md:text-4xl font-bold tracking-tight gradient-text">60s</div>
-              <div className="text-[13px] font-medium text-[#a3a3a3] mt-1.5">Request to SOW</div>
-            </div>
-            <div>
-              <div className="text-3xl md:text-4xl font-bold tracking-tight gradient-text">1-Click</div>
-              <div className="text-[13px] font-medium text-[#a3a3a3] mt-1.5">E-Signatures</div>
-            </div>
-            <div>
-              <div className="text-3xl md:text-4xl font-bold tracking-tight gradient-text">0</div>
-              <div className="text-[13px] font-medium text-[#a3a3a3] mt-1.5">Admin Hours</div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Stats — live counts + value props */}
+      <StatsSection />
 
       {/* Products Section — YC/Airbnb quality */}
       <section id="products" className="py-20 md:py-28 px-6">

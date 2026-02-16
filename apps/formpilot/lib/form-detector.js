@@ -13,14 +13,17 @@
   const DATA_ID_ATTR = 'data-formpilot-id';
 
   function getLabelForInput(el) {
-    const id = el.id;
+    var root = el.getRootNode ? el.getRootNode() : document;
+    var id = el.id;
     if (id) {
-      const label = document.querySelector(`label[for="${id}"]`);
-      if (label) return label.textContent.replace(/\s+/g, ' ').trim();
+      try {
+        var label = root.querySelector('label[for="' + id.replace(/"/g, '\\"') + '"]');
+        if (label) return label.textContent.replace(/\s+/g, ' ').trim();
+      } catch (_) {}
     }
-    let parent = el.closest('label');
+    var parent = el.closest ? el.closest('label') : null;
     if (parent) return parent.textContent.replace(/\s+/g, ' ').trim();
-    parent = el.closest('div[role="group"], fieldset');
+    parent = el.closest ? el.closest('div[role="group"], fieldset') : null;
     if (parent) {
       const legend = parent.querySelector('legend, [class*="label"], [class*="Label"]');
       if (legend) return legend.textContent.replace(/\s+/g, ' ').trim();
@@ -60,29 +63,35 @@
 
   /** Build a stable CSS selector for this element so we can fill by selector (WebMCP-style). */
   function buildStableSelector(el, index) {
-    const tag = el.tagName.toLowerCase();
-    const id = el.id && el.id.trim();
-    if (id && /^[a-zA-Z][\w-]*$/.test(id) && document.querySelectorAll(`#${CSS.escape(id)}`).length === 1) {
-      return `#${CSS.escape(id)}`;
+    var root = el.getRootNode ? el.getRootNode() : document;
+    var tag = el.tagName ? el.tagName.toLowerCase() : 'input';
+    var id = el.id && el.id.trim();
+    if (id && /^[a-zA-Z][\w-]*$/.test(id)) {
+      try {
+        if (root.querySelectorAll && root.querySelectorAll('#' + CSS.escape(id)).length === 1)
+          return '#' + CSS.escape(id);
+      } catch (_) {}
     }
-    const name = el.getAttribute('name');
+    var name = el.getAttribute('name');
     if (name && /^[a-zA-Z][\w.-]*$/.test(name)) {
-      const escaped = CSS.escape(name);
-      const sel = `${tag}[name="${escaped}"]`;
-      if (document.querySelectorAll(sel).length === 1) return sel;
+      try {
+        var escaped = CSS.escape(name);
+        var sel = tag + '[name="' + escaped + '"]';
+        if (root.querySelectorAll && root.querySelectorAll(sel).length === 1) return sel;
+      } catch (_) {}
     }
-    const fpId = `fp_${index}`;
+    var fpId = 'fp_' + index;
     el.setAttribute(DATA_ID_ATTR, fpId);
-    return `[${DATA_ID_ATTR}="${fpId}"]`;
+    return '[' + DATA_ID_ATTR + '="' + fpId + '"]';
   }
 
   function detectFields() {
-    const elements = document.querySelectorAll(SELECTORS);
-    const seen = new Set();
-    const fields = [];
+    var elements = Array.prototype.slice.call(document.querySelectorAll(SELECTORS));
+    var seen = new Set();
+    var fields = [];
 
-    elements.forEach((el, index) => {
-      if (!el.offsetParent && el.type !== 'hidden') return;
+    elements.forEach(function (el, index) {
+      if (el.type === 'hidden') return;
       const label = getLabelForInput(el);
       const placeholder = getPlaceholder(el);
       const name = getFieldName(el);

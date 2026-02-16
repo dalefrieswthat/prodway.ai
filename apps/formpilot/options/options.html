@@ -86,6 +86,13 @@
         <span class="hint">We’ll fetch the page and extract company/contact info to pre-fill the form.</span>
       </div>
       <div class="field">
+        <label class="checkbox-label">
+          <input type="checkbox" id="usageConsent" name="usageConsent" aria-describedby="usageConsentHint">
+          <span>Share anonymous usage to improve the product</span>
+        </label>
+        <span id="usageConsentHint" class="hint">We count how many forms are filled (no personal data). This helps us say &ldquo;we know what scaling teams need&rdquo; and improve FormPilot.</span>
+      </div>
+      <div class="field">
         <label for="apiBaseUrl">API base URL (optional)</label>
         <input type="url" id="apiBaseUrl" name="apiBaseUrl" placeholder="https://api.prodway.ai">
         <span class="hint">Leave default or set your Railway FormPilot API URL.</span>

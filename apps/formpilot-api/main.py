@@ -230,6 +230,65 @@ async def health() -> dict:
     return {"status": "ok", "service": "formpilot-api"}
 
 
+# --- Prodway usage stats (forms filled, SOWs sent) for landing page & moat ---
+
+class RecordFillRequest(BaseModel):
+    count: int = 1
+    consent: bool = False
+
+
+class RecordSowRequest(BaseModel):
+    consent: bool = False
+
+
+@app.post("/prodway/record-fill")
+async def record_fill(body: RecordFillRequest) -> dict:
+    """
+    Record form fills (with consent). Called by FormPilot after successful fill.
+    Used for landing-page stats and "we know what scaling teams need."
+    """
+    if not body.consent or body.count <= 0:
+        return {"ok": True, "recorded": 0}
+    try:
+        from usage_db import record_forms_filled
+        record_forms_filled(body.count)
+        return {"ok": True, "recorded": body.count}
+    except Exception as e:
+        logger.warning("record_fill failed: %s", e)
+        return {"ok": False, "recorded": 0}
+
+
+@app.post("/prodway/record-sow")
+async def record_sow(body: RecordSowRequest) -> dict:
+    """
+    Record SOW sent (with consent). Called by SowFlow when an SOW is sent (e.g. DocuSign).
+    """
+    if not body.consent:
+        return {"ok": True, "recorded": 0}
+    try:
+        from usage_db import record_sows_sent
+        record_sows_sent(1)
+        return {"ok": True, "recorded": 1}
+    except Exception as e:
+        logger.warning("record_sow failed: %s", e)
+        return {"ok": False, "recorded": 0}
+
+
+@app.get("/prodway/stats")
+async def get_stats() -> dict:
+    """
+    Public stats for landing page: forms_filled, sows_sent.
+    No auth; safe aggregate counts only.
+    """
+    try:
+        from usage_db import get_stats
+        forms_filled, sows_sent = get_stats()
+        return {"forms_filled": forms_filled, "sows_sent": sows_sent}
+    except Exception as e:
+        logger.warning("get_stats failed: %s", e)
+        return {"forms_filled": 0, "sows_sent": 0}
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))

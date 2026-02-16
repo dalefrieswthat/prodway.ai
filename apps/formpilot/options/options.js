@@ -12,6 +12,7 @@
     profile: 'formpilot_company_profile',
     context: 'formpilot_company_context',
     apiBaseUrl: 'formpilot_api_base_url',
+    usageConsent: 'formpilot_usage_consent',
   };
   const DEFAULT_API_BASE = 'https://api.prodway.ai';
   const FIELDS = [
@@ -59,7 +60,7 @@
     SAVE_STATUS.classList.toggle('saved', !!saved);
   }
 
-  CONTEXT_FILE.addEventListener('change', function () {
+  if (CONTEXT_FILE) CONTEXT_FILE.addEventListener('change', function () {
     const file = this.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -72,7 +73,7 @@
     this.value = '';
   });
 
-  IMPORT_URL_BTN.addEventListener('click', async function () {
+  if (IMPORT_URL_BTN) IMPORT_URL_BTN.addEventListener('click', async function () {
     const url = (IMPORT_URL_INPUT && IMPORT_URL_INPUT.value.trim()) || '';
     if (!url) {
       showStatus('Enter a URL first.', false);
@@ -103,23 +104,37 @@
     }
   });
 
+  if (!FORM) return;
+  function getUsageConsent() {
+    const el = document.getElementById('usageConsent');
+    return el ? el.checked : false;
+  }
+
+  function setUsageConsent(checked) {
+    const el = document.getElementById('usageConsent');
+    if (el) el.checked = !!checked;
+  }
+
   FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
     const profile = getProfile();
     const context = getCompanyContext();
     const apiBaseUrl = getApiBaseUrl();
+    const usageConsent = getUsageConsent();
     await chrome.storage.local.set({
       [STORAGE_KEYS.profile]: profile,
       [STORAGE_KEYS.context]: context,
       [STORAGE_KEYS.apiBaseUrl]: apiBaseUrl || DEFAULT_API_BASE,
+      [STORAGE_KEYS.usageConsent]: usageConsent,
     });
     showStatus('Saved.', true);
     setTimeout(() => showStatus('', false), 2000);
   });
 
-  chrome.storage.local.get([STORAGE_KEYS.profile, STORAGE_KEYS.context, STORAGE_KEYS.apiBaseUrl], (o) => {
+  chrome.storage.local.get([STORAGE_KEYS.profile, STORAGE_KEYS.context, STORAGE_KEYS.apiBaseUrl, STORAGE_KEYS.usageConsent], (o) => {
     if (o[STORAGE_KEYS.profile]) setProfile(o[STORAGE_KEYS.profile]);
     setCompanyContext(o[STORAGE_KEYS.context] || '');
     setApiBaseUrl(o[STORAGE_KEYS.apiBaseUrl] || DEFAULT_API_BASE);
+    setUsageConsent(o[STORAGE_KEYS.usageConsent] === true);
   });
 })();
