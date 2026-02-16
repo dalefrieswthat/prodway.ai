@@ -103,7 +103,7 @@ export default function Home() {
               </p>
 
               <a
-                href="https://api.prodway.ai/slack/install"
+                href="https://dynamic-transformation-production.up.railway.app/slack/install"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2.5 w-full min-h-[48px] py-3 px-4 mb-5 rounded-lg bg-green-500 text-[#050505] font-semibold text-[15px] hover:bg-[#16a34a] focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-[#050505] transition-colors duration-200"
