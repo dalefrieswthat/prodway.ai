@@ -191,6 +191,8 @@ def get_team_docusign(team_id: str) -> dict | None:
             "refresh_token": integrations.get("docusign_refresh_token", ""),
             "account_id": integrations.get("docusign_account_id", ""),
             "base_uri": integrations.get("docusign_base_uri", DOCUSIGN_BASE_URL),
+            "provider_name": integrations.get("docusign_user_name", ""),
+            "provider_email": integrations.get("docusign_user_email", ""),
         }
     return None
 
@@ -607,10 +609,78 @@ def generate_sow_html(sow: dict, client_name: str, company_name: str) -> str:
       <p><strong>Provider</strong></p>
       <p>[PROVIDER_SIGNATURE]</p>
       <p class="signature-line">Signature</p>
+      <p>[PROVIDER_DATE]</p>
+      <p class="signature-line">Date</p>
     </div>
   </div>
 </body>
 </html>"""
+
+
+def _docusign_signers(client_email: str, client_name: str, ds_creds: dict) -> list[dict]:
+    """Build signers list: client first (routingOrder 1), then provider (routingOrder 2) if we have their email."""
+    signers = [
+        {
+            "email": client_email,
+            "name": client_name,
+            "recipientId": "1",
+            "routingOrder": "1",
+            "tabs": {
+                "signHereTabs": [
+                    {
+                        "documentId": "1",
+                        "pageNumber": "1",
+                        "anchorString": "[CLIENT_SIGNATURE]",
+                        "anchorUnits": "pixels",
+                        "anchorXOffset": "0",
+                        "anchorYOffset": "0",
+                    }
+                ],
+                "dateSignedTabs": [
+                    {
+                        "documentId": "1",
+                        "pageNumber": "1",
+                        "anchorString": "[CLIENT_DATE]",
+                        "anchorUnits": "pixels",
+                        "anchorXOffset": "0",
+                        "anchorYOffset": "0",
+                    }
+                ],
+            },
+        },
+    ]
+    provider_email = (ds_creds.get("provider_email") or "").strip()
+    provider_name = (ds_creds.get("provider_name") or "Provider").strip() or "Provider"
+    if provider_email:
+        signers.append({
+            "email": provider_email,
+            "name": provider_name,
+            "recipientId": "2",
+            "routingOrder": "2",
+            "tabs": {
+                "signHereTabs": [
+                    {
+                        "documentId": "1",
+                        "pageNumber": "1",
+                        "anchorString": "[PROVIDER_SIGNATURE]",
+                        "anchorUnits": "pixels",
+                        "anchorXOffset": "0",
+                        "anchorYOffset": "0",
+                    }
+                ],
+                "dateSignedTabs": [
+                    {
+                        "documentId": "1",
+                        "pageNumber": "1",
+                        "anchorString": "[PROVIDER_DATE]",
+                        "anchorUnits": "pixels",
+                        "anchorXOffset": "0",
+                        "anchorYOffset": "0",
+                    }
+                ],
+            },
+        })
+    return signers
 
 
 def send_docusign_envelope(
@@ -620,6 +690,7 @@ def send_docusign_envelope(
     """
     Send SOW via the CUSTOMER's DocuSign account for e-signature.
     Each team connects their own DocuSign via OAuth.
+    Client signs first (routingOrder 1), then provider (routingOrder 2).
     """
     ds_creds = get_team_docusign(team_id) if team_id else None
     if not ds_creds:
@@ -644,36 +715,7 @@ def send_docusign_envelope(
             }
         ],
         "recipients": {
-            "signers": [
-                {
-                    "email": client_email,
-                    "name": client_name,
-                    "recipientId": "1",
-                    "routingOrder": "1",
-                    "tabs": {
-                        "signHereTabs": [
-                            {
-                                "documentId": "1",
-                                "pageNumber": "1",
-                                "anchorString": "[CLIENT_SIGNATURE]",
-                                "anchorUnits": "pixels",
-                                "anchorXOffset": "0",
-                                "anchorYOffset": "0",
-                            }
-                        ],
-                        "dateSignedTabs": [
-                            {
-                                "documentId": "1",
-                                "pageNumber": "1",
-                                "anchorString": "[CLIENT_DATE]",
-                                "anchorUnits": "pixels",
-                                "anchorXOffset": "0",
-                                "anchorYOffset": "0",
-                            }
-                        ],
-                    },
-                }
-            ]
+            "signers": _docusign_signers(client_email, client_name, ds_creds),
         },
     }
 
@@ -1477,13 +1519,14 @@ async def connect_docusign_callback(code: str = "", state: str = ""):
                 accounts[0] if accounts else {},
             )
 
-            # Save to team integrations
+            # Save to team integrations (include provider email/name for envelope signer)
             save_team_integrations(team_id, {
                 "docusign_access_token": token_data["access_token"],
                 "docusign_refresh_token": token_data.get("refresh_token", ""),
                 "docusign_account_id": default_account.get("account_id", ""),
                 "docusign_base_uri": default_account.get("base_uri", DOCUSIGN_BASE_URL),
                 "docusign_user_name": userinfo.get("name", ""),
+                "docusign_user_email": userinfo.get("email", ""),
                 "docusign_connected_at": datetime.now().isoformat(),
             })
 

@@ -99,6 +99,38 @@
             background: rgba(34, 197, 94, 0.1);
         }
 
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .install-slack-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 8px;
+            background: var(--primary);
+            color: #050505;
+            text-decoration: none;
+            transition: background 0.2s, transform 0.15s;
+        }
+
+        .install-slack-btn:hover {
+            background: #16a34a;
+            transform: translateY(-1px);
+        }
+
+        .install-slack-btn img {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            object-fit: contain;
+        }
+
         /* Hero */
         .hero {
             padding: 8rem 1.5rem 5rem;
@@ -691,7 +723,13 @@
                 </div>
                 <span>Prodway</span>
             </div>
-            <a href="mailto:dale@prodway.ai" class="nav-cta">Get Early Access</a>
+            <div class="nav-right">
+                <a href="https://api.prodway.ai/slack/install" target="_blank" rel="noopener noreferrer" class="install-slack-btn">
+                    <img src="sowflow-icon.png" alt="SowFlow" width="20" height="20">
+                    Add to Slack
+                </a>
+                <a href="mailto:dale@prodway.ai" class="nav-cta">Get Early Access</a>
+            </div>
         </div>
     </nav>
 
