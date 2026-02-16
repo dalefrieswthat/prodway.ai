@@ -838,6 +838,10 @@
     <section class="stats">
         <div class="stats-grid">
             <div>
+                <div class="stat-value" id="stat-fields-filled">—</div>
+                <div class="stat-label">Fields Filled (FormPilot)</div>
+            </div>
+            <div>
                 <div class="stat-value">60s</div>
                 <div class="stat-label">Request to SOW</div>
             </div>
@@ -851,6 +855,16 @@
             </div>
         </div>
     </section>
+    <script>
+      (function () {
+        var el = document.getElementById('stat-fields-filled');
+        if (!el) return;
+        fetch('https://api.prodway.ai/prodway/stats').then(function (r) { return r.json(); }).then(function (d) {
+          var n = d && typeof d.forms_filled === 'number' ? d.forms_filled : 0;
+          el.textContent = n >= 1000 ? (Math.floor(n / 1000) + 'k+') : (n + '+');
+        }).catch(function () { el.textContent = '—'; });
+      })();
+    </script>
 
     <!-- Trusted By -->
     <section class="trusted-by">
