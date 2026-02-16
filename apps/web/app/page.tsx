@@ -163,6 +163,16 @@ export default function Home() {
                 Chrome extension that auto-fills any form with your company data. YC applications, vendor forms, RFPs—done in seconds.
               </p>
 
+              <a
+                href="/formpilot"
+                className="flex items-center justify-center gap-2.5 w-full min-h-[48px] py-3 px-4 mb-5 rounded-lg bg-[#1a1a1a] border border-[#262626] text-[#fafafa] font-semibold text-[15px] hover:bg-[#222] hover:border-[#404040] focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-[#0c0c0c] transition-colors duration-200"
+              >
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm3.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                </svg>
+                Install for Chrome
+              </a>
+
               <div className="bg-[#141414] border border-[#262626] rounded-lg py-3.5 px-4 text-sm mb-5">
                 <div className="flex items-center gap-2 text-[#a3a3a3]">
                   <div className="w-1.5 h-1.5 rounded-full bg-amber-500/80" />
