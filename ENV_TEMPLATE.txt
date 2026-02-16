@@ -56,3 +56,11 @@ DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi
 # For production, mount a persistent volume
 # --------------------------------------------
 # DATA_DIR=/app/data
+
+# --------------------------------------------
+# 6. FORMPILOT API (separate deploy, e.g. Railway)
+# Used by FormPilot Chrome extension for AI field mapping + Import from URL.
+# Set in Railway app variables when deploying apps/formpilot-api.
+# --------------------------------------------
+# ANTHROPIC_API_KEY=   (same or separate key)
+# PORT=8000            (Railway sets PORT automatically)
