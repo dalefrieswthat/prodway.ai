@@ -8,6 +8,9 @@ api.prodway.ai      → Railway (SowFlow backend — new)
 ```
 
 Customers connect their OWN DocuSign and Stripe accounts.
+
+**If "Add to Slack" shows "This site can't be reached" (DNS_PROBE_FINISHED_NXDOMAIN):**
+`api.prodway.ai` has no DNS record yet. Deploy the API to Railway (Step 2), then add the custom domain (Step 4): in your DNS create `CNAME api → your-railway-url.up.railway.app`, and in Railway add `api.prodway.ai` under Settings → Networking → Custom Domain. Until then you can temporarily point the button at your Railway URL (see Step 4).
 Prodway is the platform — not in the money flow.
 
 ---
