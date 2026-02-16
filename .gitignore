@@ -60,5 +60,8 @@ docker-compose.override.yml
 # Documentation (may contain confidential info)
 claude.md
 
+# Cursor / local context (do not commit)
+cursor-context/
+
 # Pre-commit
 .secrets.baseline

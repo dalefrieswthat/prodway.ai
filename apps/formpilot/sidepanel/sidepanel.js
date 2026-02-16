@@ -1,12 +1,16 @@
 /**
- * Popup script: get fields from tab → get mappings from background → fill via content script.
+ * Side panel: same fill flow as popup. Options open in new tab.
  */
 (function () {
   const fillBtn = document.getElementById('fill-btn');
   const statusEl = document.getElementById('status');
   const optionsLink = document.getElementById('options-link');
 
-  if (optionsLink) optionsLink.href = chrome.runtime.getURL('options/options.html');
+  if (optionsLink) {
+    optionsLink.href = chrome.runtime.getURL('options/options.html');
+    optionsLink.target = '_blank';
+    optionsLink.rel = 'noopener noreferrer';
+  }
 
   function setStatus(text, isSuccess) {
     statusEl.textContent = text;
@@ -26,12 +30,12 @@
   async function run() {
     const tab = await getActiveTab();
     if (!tab?.id) {
-    setStatus('No active tab.', false);
-    return;
+      setStatus('No active tab.', false);
+      return;
     }
-    if (!tab.url || (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://'))) {
-    setStatus('Cannot run on this page.', false);
-    return;
+    if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+      setStatus('Cannot run on this page.', false);
+      return;
     }
 
     setBusy(true);
@@ -54,9 +58,9 @@
         type: 'FORMPILOT_SUGGEST_MAPPINGS',
         fields,
       });
-      const list = (response && response.ok && response.mappings) ? response.mappings : [];
+      const list = (response?.ok && response.mappings) ? response.mappings : [];
       if (list.length === 0) {
-        setStatus('No company data to fill. Add data in options.', false);
+        setStatus('No company data to fill. Add data in company data.', false);
         setBusy(false);
         return;
       }
@@ -67,6 +71,17 @@
       });
       if (fillRes?.ok) {
         setStatus(`Filled ${fillRes.filled} field${fillRes.filled === 1 ? '' : 's'}.`, true);
+        // Record anonymous usage when user has consented (options → "Share anonymous usage")
+        chrome.storage.local.get(['formpilot_usage_consent', 'formpilot_api_base_url'], (o) => {
+          if (o.formpilot_usage_consent && fillRes.filled > 0) {
+            const base = (o.formpilot_api_base_url || 'https://api.prodway.ai').replace(/\/$/, '');
+            fetch(`${base}/prodway/record-fill`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ count: fillRes.filled, consent: true }),
+            }).catch(() => {});
+          }
+        });
       } else {
         setStatus(fillRes?.error || 'Fill failed.', false);
       }

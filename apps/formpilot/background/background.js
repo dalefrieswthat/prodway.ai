@@ -90,6 +90,8 @@ function enrichMappingsWithSelectors(mappings, fields) {
   }));
 }
 
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type !== 'FORMPILOT_SUGGEST_MAPPINGS') return false;
   (async () => {

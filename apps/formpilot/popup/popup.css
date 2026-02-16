@@ -1,34 +1,27 @@
 /**
- * FormPilot popup — Airbnb-quality design tokens and layout.
+ * FormPilot popup — Airbnb-quality light theme (fallback when opened via link).
  */
 :root {
-  --bg: #0c0c0c;
-  --bg-elevated: #141414;
-  --fg: #fafafa;
-  --fg-muted: #a3a3a3;
-  --border: #262626;
-  --primary: #22c55e;
-  --primary-hover: #16a34a;
+  --bg: #ffffff;
+  --fg: #222222;
+  --fg-secondary: #717171;
+  --border: #ebebeb;
+  --primary: #ff385c;
+  --primary-hover: #e31c5f;
   --radius: 8px;
-  --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --space-5: 20px;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  width: 320px;
-  min-height: 200px;
+  width: 300px;
+  min-height: 180px;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   color: var(--fg);
   background: var(--bg);
@@ -38,46 +31,26 @@ body {
 .root {
   display: flex;
   flex-direction: column;
-  min-height: 200px;
+  min-height: 180px;
   padding: var(--space-4);
 }
 
-.header {
-  margin-bottom: var(--space-4);
-}
+.header { margin-bottom: var(--space-3); }
 
-.logo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
+.logo { display: flex; align-items: center; gap: var(--space-2); }
 
-.logo-img {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  object-fit: contain;
-}
+.logo-img { width: 24px; height: 24px; border-radius: 6px; object-fit: contain; }
 
-.logo-text {
-  font-weight: 600;
-  font-size: 15px;
-  letter-spacing: -0.01em;
-}
+.logo-text { font-weight: 600; font-size: 15px; color: var(--fg); }
 
 .main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
   gap: var(--space-3);
 }
 
-.subtitle {
-  color: var(--fg-muted);
-  font-size: 13px;
-  margin-bottom: var(--space-1);
-}
+.subtitle { color: var(--fg-secondary); font-size: 13px; }
 
 .btn {
   display: inline-flex;
@@ -91,56 +64,25 @@ body {
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
+  background: var(--primary);
+  color: #fff;
   transition: background 0.2s ease;
 }
 
-.btn:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
+.btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.btn-primary {
-  background: var(--primary);
-  color: #050505;
-}
+.btn-primary:not(:disabled):hover { background: var(--primary-hover); }
 
-.btn-primary:not(:disabled):hover {
-  background: var(--primary-hover);
-}
+.status { font-size: 13px; color: var(--fg-secondary); min-height: 20px; }
 
-.status {
-  font-size: 13px;
-  color: var(--fg-muted);
-  min-height: 20px;
-}
+.status.success { color: #008a05; }
 
-.status.success {
-  color: var(--primary);
-}
+.footer { margin-top: auto; padding-top: var(--space-4); border-top: 1px solid var(--border); }
 
-.footer {
-  margin-top: auto;
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border);
-}
+.link { font-size: 13px; font-weight: 500; color: var(--fg-secondary); text-decoration: none; }
 
-.link {
-  font-size: 13px;
-  color: var(--fg-muted);
-  text-decoration: none;
-}
+.link:hover { color: var(--fg); text-decoration: underline; }
 
-.link:hover {
-  color: var(--fg);
-}
-
-.link:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
+.link:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; border-radius: 2px; }
