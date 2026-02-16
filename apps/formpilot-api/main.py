@@ -47,6 +47,19 @@ class SuggestMappingsResponse(BaseModel):
     mappings: list[dict[str, Any]]
 
 
+def _looks_like_linkedin_url(value: str) -> bool:
+    """True if value looks like a LinkedIn URL; False for plain names (avoid wrong fill)."""
+    if not value or len(value) > 2000:
+        return False
+    v = value.lower().strip()
+    if "linkedin" in v or v.startswith("http") or ("/" in v and "." in v):
+        return True
+    # Allow linkedin.com/... without https
+    if v.startswith("linkedin.com/") or v.startswith("www.linkedin.com/"):
+        return True
+    return False
+
+
 def build_prompt(fields: list[dict], profile: dict, context: str | None) -> str:
     """Build prompt including optional company context for long-form / YC-style fields."""
     field_summary = []
@@ -84,7 +97,9 @@ Structured profile (prefer for exact matches like email, company name):
 
 Respond with a JSON array only. Each element: {{ "index": <field index number>, "value": "<value from profile or context or empty string>" }}.
 - For short fields (email, name, company) use the profile.
-- For long-form or custom fields (description, traction, problem, solution, "tell us about your company") use the relevant part of the company context.
+- For "first name" / "last name": use the first word of contactName for first name, last word for last name. Do not put a person's name in any other field type.
+- For LinkedIn / linkedin URL: use ONLY a valid URL (e.g. linkedin.com/... or https://linkedin.com/...). Never put a person's name in the LinkedIn field. If you only have a name and no URL, leave the LinkedIn field empty (omit it from the array).
+- For long-form or custom fields (description, traction, problem, solution) use the relevant part of the company context.
 Include only fields that should be filled (value non-empty). Order does not matter.
 Example: [{{ "index": 0, "value": "Acme Inc." }}, {{ "index": 2, "value": "We help startups scale infrastructure without hiring." }}]
 """
@@ -129,14 +144,22 @@ async def suggest_mappings(body: SuggestMappingsRequest) -> SuggestMappingsRespo
         mappings = json.loads(text)
         if not isinstance(mappings, list):
             mappings = []
-        # Normalize: ensure index (int) and value (str)
+        # Build index -> field info for validation
+        fields_by_index = {i: f for i, f in enumerate(fields_data) if isinstance(f, dict)}
+        # Normalize and validate: ensure value matches field type (e.g. no name in LinkedIn URL)
         out = []
         for m in mappings:
-            if isinstance(m, dict) and "index" in m:
-                out.append({
-                    "index": int(m["index"]),
-                    "value": str(m.get("value", "")),
-                })
+            if not isinstance(m, dict) or "index" not in m:
+                continue
+            idx = int(m["index"])
+            value = str(m.get("value", "")).strip()
+            field = fields_by_index.get(idx)
+            if field and field.get("semanticType") == "linkedinUrl" and value:
+                # Reject non-URLs in LinkedIn field (e.g. person name) to avoid wrong fill
+                if not _looks_like_linkedin_url(value):
+                    logger.info("Dropping mapping index %s: LinkedIn field got non-URL value", idx)
+                    continue
+            out.append({"index": idx, "value": value})
         return SuggestMappingsResponse(mappings=out)
     except json.JSONDecodeError as e:
         logger.warning("Claude response not valid JSON: %s", e)

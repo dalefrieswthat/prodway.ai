@@ -43,6 +43,10 @@ Default API base URL is `https://api.prodway.ai`. To use a separate FormPilot AP
 - Click the FormPilot icon → **Fill form**.
 - Fields are matched from your profile (AI if backend is set, else heuristic).
 
+### 5. WebMCP (optional)
+
+When Chrome’s WebMCP is available (Chrome 146+ with flag, or future release), FormPilot registers a tool **`formpilot_validate_fill`** so in-browser agents (or DevTools MCP) can run the same DOM-snapshot validation. After a fill, an agent can call the tool with `fields` and `mappings` to validate and optionally clear wrong values (e.g. non-URL in LinkedIn). No screenshot or vision—validation stays DOM-based.
+
 ## Project layout
 
 ```
@@ -50,6 +54,7 @@ apps/formpilot/
   manifest.json       # MV3
   popup/              # Popup UI
   content/            # Content script + form detector
+  injected/           # WebMCP bridge (page context)
   background/         # Service worker
   options/            # Company data form
   lib/                # form-detector.js, constants

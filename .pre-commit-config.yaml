@@ -1,4 +1,11 @@
 repos:
+  - repo: local
+    hooks:
+      - id: no-cursor-coauthor
+        name: no Cursor co-author trailer
+        entry: scripts/check-no-cursor-coauthor.sh
+        language: system
+        stages: [commit-msg]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:

@@ -70,7 +70,18 @@
         mappings: list,
       });
       if (fillRes?.ok) {
-        setStatus(`Filled ${fillRes.filled} field${fillRes.filled === 1 ? '' : 's'}.`, true);
+        const validateRes = await chrome.tabs.sendMessage(tab.id, {
+          type: 'FORMPILOT_VALIDATE_AFTER_FILL',
+          fields,
+          mappings: list,
+          clearWrong: true,
+        }).catch(() => null);
+        if (validateRes?.ok && validateRes.fixedCount > 0) {
+          setStatus(`Filled ${fillRes.filled} field${fillRes.filled === 1 ? '' : 's'}. Cleared ${validateRes.fixedCount} wrong value(s).`, true);
+        } else {
+          setStatus(`Filled ${fillRes.filled} field${fillRes.filled === 1 ? '' : 's'}.`, true);
+        }
+        refreshGlobalStat();
         // Record anonymous usage when user has consented (options → "Share anonymous usage")
         chrome.storage.local.get(['formpilot_usage_consent', 'formpilot_api_base_url'], (o) => {
           if (o.formpilot_usage_consent && fillRes.filled > 0) {
@@ -92,7 +103,24 @@
     }
   }
 
+  async function refreshGlobalStat() {
+    const globalEl = document.getElementById('global-stat');
+    if (!globalEl) return;
+    try {
+      const o = await chrome.storage.local.get(['formpilot_api_base_url']);
+      const base = (o.formpilot_api_base_url || 'https://api.prodway.ai').replace(/\/$/, '');
+      const res = await fetch(`${base}/prodway/stats`);
+      const data = await res.json();
+      const n = data && typeof data.forms_filled === 'number' ? data.forms_filled : 0;
+      globalEl.textContent = n > 0 ? `FormPilot users have filled ${n >= 1000 ? (Math.floor(n / 1000) + 'k+') : (n + '+')} fields total.` : '';
+    } catch {
+      globalEl.textContent = '';
+    }
+  }
+
   fillBtn.addEventListener('click', run);
+
+  refreshGlobalStat();
 
   getActiveTab().then((tab) => {
     if (tab?.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {

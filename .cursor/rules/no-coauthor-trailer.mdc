@@ -1,0 +1,14 @@
+---
+description: Never add Cursor co-author trailer to commits
+alwaysApply: true
+---
+
+# No Co-authored-by Trailer on Commits
+
+When committing in this repo:
+
+- Use only `git commit -m "message"` (or -m with multiple lines).
+- Do NOT use --trailer or any Co-authored-by line.
+- Do NOT run: git commit --trailer "Co-authored-by: Cursor <cursoragent@cursor.com>" -m "..."
+
+The project owner does not want Cursor or any agent listed as co-author. Plain commits only.
