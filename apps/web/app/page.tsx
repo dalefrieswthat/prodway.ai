@@ -131,11 +131,6 @@ export default function Home() {
 
             {/* FormPilot Card */}
             <div className="bg-[#0c0c0c] border border-[#262626] rounded-xl p-7 md:p-8 relative shadow-[0_1px_3px_rgba(0,0,0,0.3)] hover:border-[#333] transition-all duration-200 ease-out">
-              <div className="absolute top-5 right-5">
-                <span className="px-2.5 py-0.5 text-xs font-medium border border-[#404040] text-[#a3a3a3] rounded-full">
-                  Coming Soon
-                </span>
-              </div>
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
                   <svg className="w-6 h-6 text-[#a3a3a3]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -144,6 +139,9 @@ export default function Home() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold tracking-tight text-[#fafafa]">FormPilot</h3>
+                  <span className="inline-block mt-1 px-2.5 py-0.5 text-xs font-medium bg-green-500/12 text-green-500 rounded-full">
+                    Live
+                  </span>
                 </div>
               </div>
 
@@ -152,14 +150,22 @@ export default function Home() {
               </p>
 
               <a
-                href="/formpilot"
-                className="flex items-center justify-center gap-2.5 w-full min-h-[48px] py-3 px-4 mb-5 rounded-lg bg-[#1a1a1a] border border-[#262626] text-[#fafafa] font-semibold text-[15px] hover:bg-[#222] hover:border-[#404040] focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-[#0c0c0c] transition-colors duration-200"
+                href="https://github.com/dalefrieswthat/prodway.ai/blob/main/apps/formpilot/README.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2.5 w-full min-h-[48px] py-3 px-4 mb-3 rounded-lg bg-green-500 text-[#050505] font-semibold text-[15px] hover:bg-[#16a34a] focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-[#050505] transition-colors duration-200"
               >
-                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm3.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                </svg>
-                Install for Chrome
+                Install FormPilot
               </a>
+
+              <div className="bg-[#141414] border border-[#262626] rounded-lg py-3 px-4 text-[13px] text-[#a3a3a3] mb-5">
+                <p className="font-medium text-[#e5e5e5] mb-1.5">Install (Chrome)</p>
+                <ol className="list-decimal list-inside space-y-1 text-[12px]">
+                  <li>Open <code className="bg-white/5 px-1 rounded">chrome://extensions</code>, turn on Developer mode.</li>
+                  <li><a href="https://github.com/dalefrieswthat/prodway.ai" target="_blank" rel="noopener noreferrer" className="text-green-500 hover:underline">Clone the repo</a>, then Load unpacked → <code className="bg-white/5 px-1 rounded">apps/formpilot</code>.</li>
+                  <li>Click the extension icon → Fill form. Add company data in Edit company data first.</li>
+                </ol>
+              </div>
 
               <div className="bg-[#141414] border border-[#262626] rounded-lg py-3.5 px-4 text-sm mb-5">
                 <div className="flex items-center gap-2 text-[#a3a3a3]">
@@ -170,8 +176,8 @@ export default function Home() {
 
               <ul className="space-y-2.5">
                 {["Ambient form detection", "Company data sync", "One-click fill", "Smart field matching"].map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2.5 text-[15px] text-[#a3a3a3]">
-                    <svg className="w-4 h-4 text-[#525252] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <li key={i} className="flex items-center gap-2.5 text-[15px] text-[#e5e5e5]">
+                    <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     {feature}
