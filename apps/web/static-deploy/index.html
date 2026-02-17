@@ -3,67 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prodway AI - Scale Your Agency Without Hiring</title>
+    <title>Prodway AI — Scale Your Agency Without Hiring</title>
     <meta name="description" content="AI tools that handle proposals, contracts, and invoicing so you can focus on the work that matters.">
+    <meta property="og:title" content="Prodway AI — Scale Your Agency Without Hiring">
+    <meta property="og:description" content="AI tools that handle proposals, contracts, and invoicing so you can focus on the work that matters.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://prodway.ai">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="alternate icon" href="/favicon.svg">
     <meta name="theme-color" content="#050505">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* ========================================
+           RESET & TOKENS
+           ======================================== */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --bg: #050505;
-            --fg: #fafafa;
-            --fg-soft: #e5e5e5;
-            --primary: #22c55e;
-            --primary-hover: #16a34a;
-            --primary-muted: rgba(34, 197, 94, 0.12);
-            --muted: #a3a3a3;
-            --border: #262626;
-            --card: #0c0c0c;
-            --radius: 12px;
-            --radius-sm: 8px;
-            --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-            --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
-            --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
-            --transition: 0.2s var(--ease);
+            --bg:             #050505;
+            --surface:        #0a0a0a;
+            --card:           #0f0f0f;
+            --border:         rgba(255, 255, 255, 0.08);
+            --border-hover:   rgba(255, 255, 255, 0.14);
+            --fg:             #fafafa;
+            --fg-secondary:   #a1a1aa;
+            --fg-tertiary:    #71717a;
+            --accent:         #22c55e;
+            --accent-hover:   #16a34a;
+            --accent-muted:   rgba(34, 197, 94, 0.10);
+            --accent-subtle:  rgba(34, 197, 94, 0.06);
+            --cyan:           #06b6d4;
+            --radius:         16px;
+            --radius-sm:      10px;
+            --radius-xs:      6px;
+            --ease:           cubic-bezier(0.25, 0.1, 0.25, 1);
+            --spring:         cubic-bezier(0.34, 1.56, 0.64, 1);
+            --transition:     0.2s var(--ease);
+            --max-w:          1120px;
+            --section-gap:    0;
         }
 
+        html { scroll-behavior: smooth; }
+
         body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg);
             color: var(--fg);
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
-            letter-spacing: -0.01em;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
         }
 
-        /* Grid background — subtle, non-competing */
+        /* Subtle grid background — only in hero area */
         .grid-bg {
             background-image:
-                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-            background-size: 60px 60px;
+                linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+            background-size: 64px 64px;
         }
 
-        /* Navigation */
+        a { color: inherit; text-decoration: none; }
+        img { display: block; max-width: 100%; }
+        button { font: inherit; cursor: pointer; border: none; background: none; }
+
+        /* ========================================
+           ANIMATIONS
+           ======================================== */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        .animate-up {
+            opacity: 0;
+            animation: fadeUp 0.7s var(--ease) forwards;
+        }
+
+        .animate-in {
+            opacity: 0;
+            animation: fadeIn 0.6s var(--ease) forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+        .delay-5 { animation-delay: 0.5s; }
+
+        /* Scroll-triggered reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ========================================
+           GRADIENT TEXT
+           ======================================== */
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent), #10b981, var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ========================================
+           NAVIGATION
+           ======================================== */
         nav {
             position: fixed;
             top: 0;
             width: 100%;
-            z-index: 50;
+            z-index: 100;
+            background: rgba(5, 5, 5, 0.72);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
             border-bottom: 1px solid var(--border);
-            background: rgba(5, 5, 5, 0.8);
-            backdrop-filter: blur(20px);
         }
 
-        .nav-container {
-            max-width: 1200px;
+        .nav-inner {
+            max-width: var(--max-w);
             margin: 0 auto;
-            padding: 1rem 1.5rem;
+            padding: 0 2rem;
+            height: 64px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -72,220 +147,178 @@
         .logo {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.625rem;
+        }
+
+        .logo-mark {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-xs);
+            background: var(--accent-muted);
+            display: grid;
+            place-items: center;
+        }
+
+        .logo-mark svg {
+            width: 16px;
+            height: 16px;
+            color: var(--accent);
+        }
+
+        .logo-text {
             font-weight: 600;
-            font-size: 1.125rem;
-            color: var(--fg);
-        }
-
-        .logo-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: var(--radius-sm);
-            background: var(--primary-muted);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .logo-icon svg {
-            width: 18px;
-            height: 18px;
-            color: var(--primary);
+            font-size: 1rem;
+            letter-spacing: -0.02em;
         }
 
         .nav-cta {
-            padding: 0.625rem 1.25rem;
-            font-size: 0.9375rem;
+            display: inline-flex;
+            align-items: center;
+            height: 36px;
+            padding: 0 1rem;
+            font-size: 0.8125rem;
             font-weight: 500;
+            border-radius: var(--radius-xs);
             border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            background: transparent;
-            color: var(--fg);
-            cursor: pointer;
-            text-decoration: none;
-            transition: border-color var(--transition), background var(--transition), color var(--transition);
+            color: var(--fg-secondary);
+            transition: all var(--transition);
         }
 
         .nav-cta:hover {
-            border-color: rgba(34, 197, 94, 0.4);
-            background: var(--primary-muted);
             color: var(--fg);
+            border-color: var(--border-hover);
+            background: rgba(255, 255, 255, 0.04);
         }
 
-        .nav-cta:focus-visible {
-            outline: 2px solid var(--primary);
-            outline-offset: 2px;
-        }
-
-        .card-cta {
-            margin-top: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .card-cta .install-slack-btn {
-            display: inline-flex;
-            justify-content: center;
-            width: 100%;
-        }
-
-        .install-slack-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            min-height: 44px;
-            padding: 0.75rem 1.25rem;
-            font-size: 0.9375rem;
-            font-weight: 600;
-            border-radius: var(--radius-sm);
-            background: var(--primary);
-            color: #050505;
-            text-decoration: none;
-            transition: background var(--transition);
-            border: none;
-            cursor: pointer;
-        }
-
-        .install-slack-btn:hover {
-            background: var(--primary-hover);
-        }
-
-        .install-slack-btn:focus-visible {
-            outline: 2px solid var(--primary);
-            outline-offset: 2px;
-        }
-
-        .install-slack-btn img {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            object-fit: contain;
-        }
-
-        /* Hero */
+        /* ========================================
+           HERO
+           ======================================== */
         .hero {
-            padding: 9rem 1.5rem 6rem;
+            padding: 10rem 2rem 6rem;
             text-align: center;
+            position: relative;
         }
 
-        .hero-content {
-            max-width: 720px;
+        /* Soft radial glow behind hero */
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 600px;
+            background: radial-gradient(ellipse at center, rgba(34, 197, 94, 0.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-inner {
+            max-width: 680px;
             margin: 0 auto;
+            position: relative;
         }
 
         .badge {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.375rem 0.875rem;
-            margin-bottom: 1.75rem;
-            font-size: 0.875rem;
+            padding: 0.375rem 1rem;
+            margin-bottom: 2rem;
+            font-size: 0.8125rem;
             font-weight: 500;
-            border: 1px solid rgba(34, 197, 94, 0.35);
+            border: 1px solid rgba(34, 197, 94, 0.25);
             border-radius: 9999px;
-            color: var(--primary);
-            background: var(--primary-muted);
+            color: var(--accent);
+            background: var(--accent-subtle);
+        }
+
+        .badge svg {
+            width: 12px;
+            height: 12px;
+            opacity: 0.8;
         }
 
         h1 {
-            font-size: clamp(2.5rem, 7vw, 4rem);
+            font-size: clamp(2.75rem, 6.5vw, 4.25rem);
             font-weight: 700;
-            letter-spacing: -0.03em;
-            line-height: 1.12;
+            letter-spacing: -0.035em;
+            line-height: 1.08;
             margin-bottom: 1.5rem;
-            color: var(--fg);
         }
 
-        .gradient-text {
-            background: linear-gradient(135deg, #22c55e 0%, #10b981 50%, #06b6d4 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero-description {
-            font-size: 1.1875rem;
-            color: var(--muted);
-            max-width: 560px;
+        .hero-sub {
+            font-size: 1.125rem;
+            color: var(--fg-secondary);
+            max-width: 480px;
             margin: 0 auto 2.5rem;
-            line-height: 1.65;
+            line-height: 1.7;
         }
 
         .cta-group {
             display: flex;
-            flex-direction: column;
-            gap: 1rem;
+            gap: 0.75rem;
             justify-content: center;
-        }
-
-        @media (min-width: 640px) {
-            .cta-group {
-                flex-direction: row;
-                gap: 1rem;
-            }
+            flex-wrap: wrap;
         }
 
         .btn-primary {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
             gap: 0.5rem;
-            min-height: 48px;
-            padding: 0.875rem 1.75rem;
-            background: var(--primary);
+            height: 48px;
+            padding: 0 1.5rem;
+            background: var(--accent);
             color: #000;
             font-weight: 600;
             font-size: 0.9375rem;
             border-radius: var(--radius-sm);
-            text-decoration: none;
-            transition: background var(--transition);
+            transition: background var(--transition), transform 0.15s var(--spring);
         }
 
         .btn-primary:hover {
-            background: var(--primary-hover);
+            background: var(--accent-hover);
+            transform: translateY(-1px);
         }
 
-        .btn-primary:focus-visible {
-            outline: 2px solid var(--primary);
-            outline-offset: 2px;
+        .btn-primary:active { transform: translateY(0); }
+
+        .btn-primary svg {
+            transition: transform var(--transition);
+        }
+
+        .btn-primary:hover svg {
+            transform: translateX(3px);
         }
 
         .btn-secondary {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            min-height: 48px;
-            padding: 0.875rem 1.75rem;
+            height: 48px;
+            padding: 0 1.5rem;
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
-            background: transparent;
-            color: var(--fg);
+            color: var(--fg-secondary);
             font-weight: 500;
             font-size: 0.9375rem;
-            text-decoration: none;
-            transition: border-color var(--transition), background var(--transition);
+            transition: all var(--transition);
         }
 
         .btn-secondary:hover {
-            border-color: #404040;
-            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--border-hover);
+            color: var(--fg);
+            background: rgba(255, 255, 255, 0.03);
         }
 
-        .btn-secondary:focus-visible {
-            outline: 2px solid var(--fg-soft);
-            outline-offset: 2px;
-        }
-
-        /* Stats */
+        /* ========================================
+           STATS
+           ======================================== */
         .stats {
-            padding: 4.5rem 1.5rem;
+            padding: 4rem 2rem;
             border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
         }
 
         .stats-grid {
-            max-width: 720px;
+            max-width: 640px;
             margin: 0 auto;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -294,221 +327,91 @@
         }
 
         .stat-value {
-            font-size: 2.25rem;
+            font-size: 2rem;
             font-weight: 700;
             letter-spacing: -0.02em;
-            background: linear-gradient(135deg, #22c55e 0%, #10b981 50%, #06b6d4 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            line-height: 1.2;
         }
+
+        .stat-value.gradient { }
 
         .stat-label {
-            font-size: 0.875rem;
+            font-size: 0.8125rem;
             font-weight: 500;
-            color: var(--muted);
-            margin-top: 0.375rem;
+            color: var(--fg-tertiary);
+            margin-top: 0.25rem;
         }
 
-        /* Trusted By */
-        .trusted-by {
-            padding: 5rem 1.5rem;
-            background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(6, 182, 212, 0.08) 100%);
-            border-top: 1px solid rgba(34, 197, 94, 0.2);
-            border-bottom: 1px solid rgba(34, 197, 94, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .trusted-by::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.05) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        .trusted-by-content {
-            max-width: 900px;
-            margin: 0 auto;
+        /* ========================================
+           SOCIAL PROOF
+           ======================================== */
+        .social-proof {
+            padding: 4rem 2rem;
+            border-top: 1px solid var(--border);
             text-align: center;
-            position: relative;
-            z-index: 1;
         }
 
-        .trusted-by-label {
-            font-size: 1rem;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 2rem;
+        .social-proof-label {
+            font-size: 0.75rem;
             font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--fg-tertiary);
+            margin-bottom: 2.5rem;
         }
 
-        .trusted-by-headline {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--fg);
-            margin-bottom: 3rem;
-            line-height: 1.4;
-        }
-
-        .trusted-by-headline .highlight {
-            color: var(--primary);
-        }
-
-        .trusted-by-logos {
+        .logos-row {
             display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 3.5rem;
             flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
-            gap: 4rem;
-            margin-bottom: 2rem;
-            padding: 2rem 0;
         }
 
-        .trusted-logo {
+        .logo-pill {
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 60px;
-            padding: 0.75rem 2rem;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            transition: all 0.3s;
-            backdrop-filter: blur(10px);
-            min-width: 200px;
+            height: 48px;
+            padding: 0 1.5rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            transition: all 0.25s var(--ease);
         }
 
-        .logo-img {
-            max-height: 40px;
-            max-width: 200px;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-        }
-
-        .logo-yc-img {
-            max-height: 36px;
-            filter: none;
-        }
-
-        .logo-antler-img {
-            filter: brightness(0) invert(1);
-            max-height: 32px;
-        }
-
-        .logo-a16z-img {
-            filter: brightness(0) invert(1);
-            max-height: 32px;
-        }
-
-        .trusted-logo:hover {
-            background: rgba(255, 255, 255, 0.06);
+        .logo-pill:hover {
+            border-color: var(--border-hover);
             transform: translateY(-2px);
         }
 
-        .trusted-logo.logo-yc-container:hover {
-            border-color: rgba(242, 101, 34, 0.4);
-            background: rgba(242, 101, 34, 0.05);
+        .logo-pill img {
+            height: 24px;
+            width: auto;
+            object-fit: contain;
         }
 
-        .trusted-logo.logo-antler-container:hover {
-            border-color: rgba(255, 255, 255, 0.3);
-            background: rgba(255, 255, 255, 0.08);
-        }
+        .logo-pill .logo-yc { filter: none; }
+        .logo-pill .logo-mono { filter: brightness(0) invert(1); opacity: 0.7; }
 
-        .trusted-logo.logo-a16z-container:hover {
-            border-color: rgba(255, 255, 255, 0.3);
-            background: rgba(255, 255, 255, 0.08);
-        }
+        .logo-pill:hover .logo-mono { opacity: 0.9; }
 
-        .logo-yc {
-            font-size: 1.75rem;
-            font-weight: 600;
-            color: #F26522;
-            letter-spacing: -0.01em;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-        }
-
-        .logo-antler {
-            font-size: 1.625rem;
-            font-weight: 700;
-            color: #000000;
-            letter-spacing: 0.02em;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-        }
-
-        .logo-a16z {
-            font-size: 1.5rem;
-            font-weight: 400;
-            color: #000000;
-            letter-spacing: 0.05em;
-            font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            font-style: normal;
-        }
-
-        /* Dark mode adjustments for logos */
-        @media (prefers-color-scheme: dark) {
-            .logo-antler,
-            .logo-a16z {
-                color: #ffffff;
-            }
-        }
-
-        .trusted-by-description {
-            font-size: 1rem;
-            color: var(--muted);
-            max-width: 700px;
-            margin: 0 auto;
+        .social-note {
+            margin-top: 2rem;
+            font-size: 0.875rem;
+            color: var(--fg-tertiary);
+            max-width: 480px;
+            margin-left: auto;
+            margin-right: auto;
             line-height: 1.6;
         }
 
-        @media (max-width: 640px) {
-            .trusted-by {
-                padding: 3rem 1.5rem;
-            }
-
-            .trusted-by-headline {
-                font-size: 1.25rem;
-                margin-bottom: 2rem;
-            }
-
-            .trusted-by-logos {
-                gap: 1.5rem;
-                padding: 1.5rem 0;
-            }
-
-            .trusted-logo {
-                padding: 0.5rem 1rem;
-                height: 44px;
-            }
-
-            .logo-yc {
-                font-size: 1.5rem;
-            }
-
-            .logo-antler {
-                font-size: 1.375rem;
-            }
-
-            .logo-a16z {
-                font-size: 1.25rem;
-            }
-
-            .trusted-logo {
-                min-width: 140px;
-                padding: 0.5rem 1.25rem;
-            }
-        }
-
-        /* Products */
+        /* ========================================
+           PRODUCTS
+           ======================================== */
         .products {
-            padding: 6rem 1.5rem 7rem;
+            padding: 6rem 2rem;
+            border-top: 1px solid var(--border);
         }
 
         .section-header {
@@ -517,278 +420,354 @@
         }
 
         .section-header h2 {
-            font-size: 1.875rem;
+            font-size: 1.75rem;
             font-weight: 700;
-            letter-spacing: -0.02em;
-            margin-bottom: 0.75rem;
-            color: var(--fg);
+            letter-spacing: -0.025em;
+            margin-bottom: 0.5rem;
         }
 
         .section-header p {
-            color: var(--muted);
-            font-size: 1.0625rem;
+            color: var(--fg-secondary);
+            font-size: 1rem;
         }
 
         .products-grid {
-            max-width: 1100px;
+            max-width: var(--max-w);
             margin: 0 auto;
             display: grid;
-            gap: 1.75rem;
+            gap: 1.5rem;
         }
 
         @media (min-width: 768px) {
-            .products-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            .products-grid { grid-template-columns: repeat(2, 1fr); }
         }
 
         .card {
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 2rem 2.25rem;
-            box-shadow: var(--shadow);
-            transition: border-color var(--transition), box-shadow var(--transition);
+            padding: 2rem;
+            transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+            position: relative;
+            overflow: hidden;
         }
 
         .card:hover {
-            border-color: rgba(34, 197, 94, 0.25);
+            border-color: rgba(34, 197, 94, 0.18);
+            box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.06), 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
-        .card-glow:hover {
-            box-shadow: var(--shadow-hover), 0 0 0 1px rgba(34, 197, 94, 0.08);
+        /* Subtle gradient shimmer on hover */
+        .card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.03) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s var(--ease);
+            pointer-events: none;
         }
 
-        .card-header {
+        .card:hover::after { opacity: 1; }
+
+        .card-top {
             display: flex;
             align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .card-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .card-icon.primary {
-            background: var(--primary-muted);
-        }
-
-        .card-icon.muted {
-            background: rgba(255, 255, 255, 0.06);
-        }
-
-        .card-icon svg {
-            width: 24px;
-            height: 24px;
-        }
-
-        .card-title {
-            display: flex;
-            flex-direction: column;
-            gap: 0.375rem;
-        }
-
-        .card-title h3 {
-            font-size: 1.375rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            color: var(--fg);
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.625rem;
-            font-size: 0.75rem;
-            font-weight: 500;
-            border-radius: 9999px;
-        }
-
-        .status-badge.live {
-            background: var(--primary-muted);
-            color: var(--primary);
-        }
-
-        .status-badge.soon {
-            border: 1px solid var(--border);
-            color: var(--muted);
-        }
-
-        .card-description {
-            color: var(--muted);
-            font-size: 0.9375rem;
-            line-height: 1.6;
-            margin-bottom: 1.5rem;
-        }
-
-        .code-block {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 1rem 1.25rem;
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-            font-size: 0.875rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .code-block .command {
-            color: var(--primary);
-        }
-
-        .code-block .args {
-            color: var(--muted);
-        }
-
-        .card-cta {
+            gap: 0.875rem;
             margin-bottom: 1rem;
         }
 
-        .install-steps {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border);
+        .card-icon {
+            width: 44px;
+            height: 44px;
             border-radius: var(--radius-sm);
-            padding: 1rem 1.25rem;
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+        }
+
+        .card-icon.accent {
+            background: var(--accent-muted);
+        }
+
+        .card-icon.muted {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .card-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .card-name {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .card-name h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .status.live { color: var(--accent); }
+        .status.soon { color: var(--fg-tertiary); }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .status.live .status-dot {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%      { opacity: 0.4; }
+        }
+
+        .card-desc {
+            color: var(--fg-secondary);
+            font-size: 0.9375rem;
+            line-height: 1.65;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-action {
+            margin-bottom: 1.5rem;
+        }
+
+        .slack-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            height: 44px;
+            padding: 0 1.25rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            background: var(--accent);
+            color: #000;
+            transition: background var(--transition), transform 0.15s var(--spring);
+        }
+
+        .slack-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .slack-btn:active { transform: translateY(0); }
+
+        .slack-btn img {
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+        }
+
+        .install-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            height: 44px;
+            padding: 0 1.25rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            color: var(--fg);
+            background: rgba(255, 255, 255, 0.03);
+            transition: all var(--transition);
+        }
+
+        .install-btn:hover {
+            border-color: var(--border-hover);
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-1px);
+        }
+
+        .install-btn:active { transform: translateY(0); }
+
+        .install-btn svg {
+            width: 16px;
+            height: 16px;
+            color: var(--fg-secondary);
+        }
+
+        .code-sample {
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            padding: 0.75rem 1rem;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.8125rem;
+            margin-bottom: 1.5rem;
+            color: var(--fg-secondary);
+        }
+
+        .code-sample .cmd {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .install-steps {
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            padding: 1rem 1.125rem;
             margin-bottom: 1.5rem;
         }
 
         .install-steps-title {
-            font-size: 0.8125rem;
+            font-size: 0.75rem;
             font-weight: 600;
-            color: var(--fg-soft);
+            color: var(--fg-secondary);
             margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
-        .install-steps-list {
+        .install-steps ol {
             margin: 0;
-            padding-left: 1.25rem;
+            padding-left: 1.125rem;
             font-size: 0.8125rem;
-            line-height: 1.6;
-            color: var(--muted);
+            line-height: 1.65;
+            color: var(--fg-tertiary);
         }
 
-        .install-steps-list li {
-            margin-bottom: 0.375rem;
-        }
+        .install-steps li { margin-bottom: 0.25rem; }
 
-        .install-steps-list code {
+        .install-steps code {
             background: rgba(255, 255, 255, 0.06);
             padding: 0.125rem 0.375rem;
-            border-radius: 4px;
+            border-radius: 3px;
             font-size: 0.75rem;
         }
 
-        .install-steps-list a {
-            color: var(--primary);
+        .install-steps a {
+            color: var(--accent);
             text-decoration: none;
         }
 
-        .install-steps-list a:hover {
-            text-decoration: underline;
-        }
+        .install-steps a:hover { text-decoration: underline; }
 
-        .feature-list {
+        .features {
             list-style: none;
             display: flex;
             flex-direction: column;
-            gap: 0.625rem;
+            gap: 0.5rem;
         }
 
-        .feature-list li {
+        .features li {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            font-size: 0.9375rem;
-            color: var(--fg-soft);
+            font-size: 0.875rem;
+            color: var(--fg-secondary);
         }
 
-        .feature-list svg {
-            width: 18px;
-            height: 18px;
+        .features svg {
+            width: 16px;
+            height: 16px;
             flex-shrink: 0;
+            color: var(--accent);
         }
 
-        .feature-list svg.active {
-            color: var(--primary);
-        }
-
-        .feature-list svg.inactive {
-            color: #525252;
-        }
-
-        /* CTA Section */
-        .cta-section {
-            padding: 6rem 1.5rem 7rem;
+        /* ========================================
+           BOTTOM CTA
+           ======================================== */
+        .bottom-cta {
+            padding: 6rem 2rem;
             border-top: 1px solid var(--border);
             text-align: center;
         }
 
-        .cta-icon {
-            width: 56px;
-            height: 56px;
-            margin: 0 auto 1.75rem;
+        .bottom-cta-inner {
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
+        .cta-glyph {
+            width: 52px;
+            height: 52px;
+            margin: 0 auto 1.5rem;
             border-radius: var(--radius);
-            background: var(--primary-muted);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: var(--accent-muted);
+            display: grid;
+            place-items: center;
         }
 
-        .cta-icon svg {
-            width: 28px;
-            height: 28px;
-            color: var(--primary);
+        .cta-glyph svg {
+            width: 24px;
+            height: 24px;
+            color: var(--accent);
         }
 
-        .cta-section h2 {
-            font-size: 1.75rem;
+        .bottom-cta h2 {
+            font-size: 1.625rem;
             font-weight: 700;
-            letter-spacing: -0.02em;
-            margin-bottom: 0.75rem;
-            color: var(--fg);
+            letter-spacing: -0.025em;
+            margin-bottom: 0.625rem;
         }
 
-        .cta-section p {
-            color: var(--muted);
-            font-size: 1.0625rem;
+        .bottom-cta p {
+            color: var(--fg-secondary);
+            font-size: 1rem;
             margin-bottom: 2rem;
-            max-width: 480px;
-            margin-left: auto;
-            margin-right: auto;
+            line-height: 1.6;
         }
 
-        /* Footer */
+        /* ========================================
+           FOOTER
+           ======================================== */
         footer {
-            padding: 2rem 1.5rem;
+            padding: 1.5rem 2rem;
             border-top: 1px solid var(--border);
         }
 
-        .footer-content {
-            max-width: 1200px;
+        .footer-inner {
+            max-width: var(--max-w);
             margin: 0 auto;
             display: flex;
-            flex-direction: column;
-            gap: 1rem;
             align-items: center;
-        }
-
-        @media (min-width: 640px) {
-            .footer-content {
-                flex-direction: row;
-                justify-content: space-between;
-            }
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
         .footer-brand {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            font-size: 0.875rem;
-            color: var(--muted);
+            font-size: 0.8125rem;
+            color: var(--fg-tertiary);
+        }
+
+        .footer-brand .logo-mark {
+            width: 22px;
+            height: 22px;
+        }
+
+        .footer-brand .logo-mark svg {
+            width: 11px;
+            height: 11px;
         }
 
         .footer-links {
@@ -797,314 +776,308 @@
         }
 
         .footer-links a {
-            font-size: 0.875rem;
-            color: var(--muted);
-            text-decoration: none;
+            font-size: 0.8125rem;
+            color: var(--fg-tertiary);
             transition: color var(--transition);
         }
 
-        .footer-links a:hover {
-            color: var(--fg);
+        .footer-links a:hover { color: var(--fg-secondary); }
+
+        /* ========================================
+           RESPONSIVE
+           ======================================== */
+        @media (max-width: 767px) {
+            .hero { padding: 8rem 1.25rem 4rem; }
+            h1 { font-size: 2.25rem; }
+            .hero-sub { font-size: 1rem; }
+            .stats { padding: 3rem 1.25rem; }
+            .stats-grid { gap: 1.5rem; }
+            .stat-value { font-size: 1.625rem; }
+            .social-proof { padding: 3rem 1.25rem; }
+            .logos-row { gap: 1rem; }
+            .logo-pill { height: 40px; padding: 0 1rem; }
+            .logo-pill img { height: 18px; }
+            .products { padding: 4rem 1.25rem; }
+            .card { padding: 1.5rem; }
+            .bottom-cta { padding: 4rem 1.25rem; }
+            .footer-inner { justify-content: center; text-align: center; }
         }
 
-        .footer-links a:focus-visible {
-            outline: 2px solid var(--fg-soft);
-            outline-offset: 2px;
-            border-radius: 2px;
-        }
-
-        /* Coming soon badge position */
-        .card-relative {
-            position: relative;
-        }
-
-        .card-corner-badge {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
+        @media (max-width: 400px) {
+            .nav-inner { padding: 0 1rem; }
+            .cta-group { flex-direction: column; align-items: stretch; }
+            .stats-grid { grid-template-columns: 1fr; gap: 1.5rem; }
         }
     </style>
+
     <!-- PostHog analytics -->
     <script>
-        !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init ns hs wi ls ds rs os capture calculateEventProperties fs register register_once register_for_session unregister unregister_for_session bs getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty gs cs createPersonProfile setInternalOrTestUser ts ys opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing vs debug M ps getPageViewId captureTraceFeedback captureTraceMetric Xr".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-        posthog.init('phc_DfZcitYKz0D0azx8UnoMEqbp7p9pR0VWnH6UQV9Y5jk', {
-            api_host: 'https://us.i.posthog.com',
-            defaults: '2026-01-30',
-            person_profiles: 'identified_only',
+        !function(t,e){var o,n,p,r;e.__SV||(window.posthog&&window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init ns hs wi ls ds rs os capture calculateEventProperties fs register register_once register_for_session unregister unregister_for_session bs getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty gs cs createPersonProfile setInternalOrTestUser ts ys opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing vs debug M ps getPageViewId captureTraceFeedback captureTraceMetric Xr".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+        posthog.init('phc_DfZcitYKz0D0azx8UnoMEqbp7p9pR0VWnH6UQV9Y5jk',{
+            api_host:'https://us.i.posthog.com',
+            defaults:'2026-01-30',
+            person_profiles:'identified_only'
         })
     </script>
 </head>
-<body class="grid-bg">
-    <!-- Navigation -->
-    <nav>
-        <div class="nav-container">
-            <div class="logo">
-                <div class="logo-icon">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+<body>
+
+<!-- ============ NAV ============ -->
+<nav>
+    <div class="nav-inner">
+        <a href="/" class="logo">
+            <div class="logo-mark">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+            </div>
+            <span class="logo-text">Prodway</span>
+        </a>
+        <a href="mailto:dale@prodway.ai" class="nav-cta">Get Early Access</a>
+    </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<section class="hero grid-bg">
+    <div class="hero-inner">
+        <div class="badge animate-up">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            </svg>
+            Now in Private Beta
+        </div>
+
+        <h1 class="animate-up delay-1">
+            Scale your agency<br>
+            <span class="gradient-text">without hiring</span>
+        </h1>
+
+        <p class="hero-sub animate-up delay-2">
+            AI tools that handle proposals, contracts, and invoicing — so you can focus on the work that matters.
+        </p>
+
+        <div class="cta-group animate-up delay-3">
+            <a href="mailto:dale@prodway.ai" class="btn-primary">
+                Request Access
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                </svg>
+            </a>
+            <a href="#products" class="btn-secondary">See Products</a>
+        </div>
+    </div>
+</section>
+
+<!-- ============ STATS ============ -->
+<section class="stats">
+    <div class="stats-grid reveal">
+        <div>
+            <div class="stat-value gradient-text" id="stat-fields-filled">&mdash;</div>
+            <div class="stat-label">Fields Filled</div>
+        </div>
+        <div>
+            <div class="stat-value gradient-text">60s</div>
+            <div class="stat-label">Request to SOW</div>
+        </div>
+        <div>
+            <div class="stat-value gradient-text">1-Click</div>
+            <div class="stat-label">E-Signatures</div>
+        </div>
+    </div>
+</section>
+<script>
+(function(){
+    var el=document.getElementById('stat-fields-filled');
+    if(!el)return;
+    fetch('https://api.prodway.ai/prodway/stats')
+        .then(function(r){return r.json()})
+        .then(function(d){
+            var n=d&&typeof d.forms_filled==='number'?d.forms_filled:0;
+            el.textContent=n>=1000?(Math.floor(n/1000)+'k+'):(n+'+');
+        })
+        .catch(function(){el.textContent='\u2014'});
+})();
+</script>
+
+<!-- ============ SOCIAL PROOF ============ -->
+<section class="social-proof">
+    <div class="reveal">
+        <p class="social-proof-label">Trusted by companies backed by</p>
+        <div class="logos-row">
+            <div class="logo-pill">
+                <img src="/logos/ycombinator.svg" alt="Y Combinator" class="logo-yc"
+                     onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\'font-weight:600;font-size:1.125rem;color:#F26522\'>Y Combinator</span>'">
+            </div>
+            <div class="logo-pill">
+                <img src="/logos/antler.svg" alt="Antler" class="logo-mono"
+                     onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\'font-weight:700;font-size:1.125rem;color:var(--fg)\'>Antler</span>'">
+            </div>
+            <div class="logo-pill">
+                <img src="/logos/a16z.svg" alt="a16z" class="logo-mono"
+                     onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\'font-weight:500;font-size:1.125rem;color:var(--fg)\'>a16z</span>'">
+            </div>
+        </div>
+        <p class="social-note">
+            We build AI infrastructure for funded startups navigating rapid growth.
+        </p>
+    </div>
+</section>
+
+<!-- ============ PRODUCTS ============ -->
+<section id="products" class="products">
+    <div class="section-header reveal">
+        <h2>Two products. One mission.</h2>
+        <p>Eliminate busywork from your consulting business.</p>
+    </div>
+
+    <div class="products-grid">
+        <!-- SowFlow -->
+        <div class="card reveal">
+            <div class="card-top">
+                <div class="card-icon accent">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="#22c55e" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
                 </div>
-                <span>Prodway</span>
-            </div>
-            <a href="mailto:dale@prodway.ai" class="nav-cta">Get Early Access</a>
-        </div>
-    </nav>
-
-    <!-- Hero -->
-    <section class="hero">
-        <div class="hero-content">
-            <div class="badge">
-                <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                </svg>
-                Now in Private Beta
+                <div class="card-name">
+                    <h3>SowFlow</h3>
+                    <span class="status live"><span class="status-dot"></span> Live</span>
+                </div>
             </div>
 
-            <h1>
-                Scale your agency<br>
-                <span class="gradient-text">without hiring</span>
-            </h1>
-
-            <p class="hero-description">
-                AI tools that handle the boring parts—proposals, contracts, invoicing—so you can focus on the work that matters.
+            <p class="card-desc">
+                Generate professional SOWs from a single Slack command. Send for e-signature. Invoice automatically.
             </p>
 
-            <div class="cta-group">
-                <a href="mailto:dale@prodway.ai" class="btn-primary">
-                    Request Access
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-                    </svg>
+            <div class="card-action">
+                <a href="https://dynamic-transformation-production.up.railway.app/slack/install" target="_blank" rel="noopener noreferrer" class="slack-btn">
+                    <img src="sowflow-icon.png" alt="SowFlow" width="18" height="18">
+                    Add to Slack
                 </a>
-                <a href="#products" class="btn-secondary">Learn More</a>
             </div>
-        </div>
-    </section>
 
-    <!-- Stats -->
-    <section class="stats">
-        <div class="stats-grid">
-            <div>
-                <div class="stat-value" id="stat-fields-filled">—</div>
-                <div class="stat-label">Fields Filled (FormPilot)</div>
+            <div class="code-sample">
+                <span class="cmd">/sow</span> K8s migration, 50k users → 500k, 6 weeks
             </div>
-            <div>
-                <div class="stat-value">60s</div>
-                <div class="stat-label">Request to SOW</div>
-            </div>
-            <div>
-                <div class="stat-value">1-Click</div>
-                <div class="stat-label">E-Signatures</div>
-            </div>
-            <div>
-                <div class="stat-value">0</div>
-                <div class="stat-label">Admin Hours</div>
-            </div>
-        </div>
-    </section>
-    <script>
-      (function () {
-        var el = document.getElementById('stat-fields-filled');
-        if (!el) return;
-        fetch('https://api.prodway.ai/prodway/stats').then(function (r) { return r.json(); }).then(function (d) {
-          var n = d && typeof d.forms_filled === 'number' ? d.forms_filled : 0;
-          el.textContent = n >= 1000 ? (Math.floor(n / 1000) + 'k+') : (n + '+');
-        }).catch(function () { el.textContent = '—'; });
-      })();
-    </script>
 
-    <!-- Trusted By -->
-    <section class="trusted-by">
-        <div class="trusted-by-content">
-            <p class="trusted-by-label">Trusted by</p>
-            <h2 class="trusted-by-headline">
-                Companies backed by <span class="highlight">YC</span>, <span class="highlight">Antler</span>, and <span class="highlight">a16z</span>
-            </h2>
-            <div class="trusted-by-logos">
-                <div class="trusted-logo logo-yc-container">
-                    <img src="/logos/ycombinator.svg" alt="Y Combinator" class="logo-img logo-yc-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-                    <span class="logo-yc" style="display:none;">Y Combinator</span>
-                </div>
-                <div class="trusted-logo logo-antler-container">
-                    <img src="/logos/antler.svg" alt="Antler" class="logo-img logo-antler-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-                    <span class="logo-antler" style="display:none;">Antler</span>
-                </div>
-                <div class="trusted-logo logo-a16z-container">
-                    <img src="/logos/a16z.svg" alt="a16z" class="logo-img logo-a16z-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-                    <span class="logo-a16z" style="display:none;">a16z</span>
-                </div>
-            </div>
-            <p class="trusted-by-description">We scale infrastructure for funded startups. We understand the challenges that come with rapid growth—because we've been there.</p>
-        </div>
-    </section>
-
-    <!-- Products -->
-    <section id="products" class="products">
-        <div class="section-header">
-            <h2>Two products. One mission.</h2>
-            <p>Eliminate busywork from your consulting business.</p>
+            <ul class="features">
+                <li>
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    AI-generated proposals
+                </li>
+                <li>
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    DocuSign e-signatures
+                </li>
+                <li>
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    Stripe invoicing
+                </li>
+                <li>
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    Slack-native workflow
+                </li>
+            </ul>
         </div>
 
-        <div class="products-grid">
-            <!-- SowFlow -->
-            <div class="card card-glow">
-                <div class="card-header">
-                    <div class="card-icon primary">
-                        <svg fill="none" viewBox="0 0 24 24" stroke="#22c55e">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                    </div>
-                    <div class="card-title">
-                        <h3>SowFlow</h3>
-                        <span class="status-badge live">Live</span>
-                    </div>
+        <!-- FormPilot -->
+        <div class="card reveal">
+            <div class="card-top">
+                <div class="card-icon muted">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="#71717a" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                    </svg>
                 </div>
-
-                <p class="card-description">
-                    Generate professional SOWs from a single Slack command. Send for signature. Invoice automatically.
-                </p>
-
-                <div class="card-cta">
-                    <a href="https://dynamic-transformation-production.up.railway.app/slack/install" target="_blank" rel="noopener noreferrer" class="install-slack-btn">
-                        <img src="sowflow-icon.png" alt="SowFlow" width="20" height="20">
-                        Add to Slack
-                    </a>
+                <div class="card-name">
+                    <h3>FormPilot</h3>
+                    <span class="status live"><span class="status-dot"></span> Live</span>
                 </div>
-
-                <div class="code-block">
-                    <span class="command">/sow</span>
-                    <span class="args"> K8s migration, 50k users → 500k, 6 weeks</span>
-                </div>
-
-                <ul class="feature-list">
-                    <li>
-                        <svg class="active" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        AI-generated proposals
-                    </li>
-                    <li>
-                        <svg class="active" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        DocuSign integration
-                    </li>
-                    <li>
-                        <svg class="active" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Stripe invoicing
-                    </li>
-                    <li>
-                        <svg class="active" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Slack-native workflow
-                    </li>
-                </ul>
             </div>
 
-            <!-- FormPilot -->
-            <div class="card card-relative">
-                <div class="card-header">
-                    <div class="card-icon muted">
-                        <svg fill="none" viewBox="0 0 24 24" stroke="#a3a3a3">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                        </svg>
-                    </div>
-                    <div class="card-title">
-                        <h3>FormPilot</h3>
-                        <span class="status-badge live">Live</span>
-                    </div>
-                </div>
+            <p class="card-desc">
+                Chrome extension that auto-fills any form with your company data. YC applications, vendor forms, RFPs — done in seconds.
+            </p>
 
-                <p class="card-description">
-                    Chrome extension that auto-fills any form with your company data. YC applications, vendor forms, RFPs—done in seconds.
-                </p>
-
-                <div class="card-cta">
-                    <a href="https://github.com/dalefrieswthat/prodway.ai/blob/main/apps/formpilot/README.md" target="_blank" rel="noopener noreferrer" class="install-slack-btn">
-                        Install FormPilot
-                    </a>
-                </div>
-
-                <div class="install-steps" id="formpilot-install">
-                    <p class="install-steps-title">Install (Chrome)</p>
-                    <ol class="install-steps-list">
-                        <li>Open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong>.</li>
-                        <li><a href="https://github.com/dalefrieswthat/prodway.ai" target="_blank" rel="noopener noreferrer">Clone the repo</a>, then click <strong>Load unpacked</strong> and select the <code>apps/formpilot</code> folder.</li>
-                        <li>Click the extension icon on any form page → <strong>Fill form</strong>. Add company data in <strong>Edit company data</strong> first.</li>
-                    </ol>
-                </div>
-
-                <div class="code-block">
-                    <span class="args">✦ Detects form fields automatically</span>
-                </div>
-
-                <ul class="feature-list">
-                    <li>
-                        <svg class="active" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Ambient form detection
-                    </li>
-                    <li>
-                        <svg class="active" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Company data sync
-                    </li>
-                    <li>
-                        <svg class="active" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        One-click fill
-                    </li>
-                    <li>
-                        <svg class="active" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Smart field matching
-                    </li>
-                </ul>
+            <div class="card-action">
+                <a href="/formpilot" class="install-btn">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Install FormPilot
+                </a>
             </div>
+
+            <div class="code-sample">
+                3 steps &middot; No account required &middot; <span class="cmd">Free</span>
+            </div>
+
+            <ul class="features">
+                <li>
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    Ambient form detection
+                </li>
+                <li>
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    Company data sync
+                </li>
+                <li>
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    One-click fill
+                </li>
+                <li>
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    Smart field matching
+                </li>
+            </ul>
         </div>
-    </section>
+    </div>
+</section>
 
-    <!-- CTA -->
-    <section class="cta-section">
-        <div class="cta-icon">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+<!-- ============ BOTTOM CTA ============ -->
+<section class="bottom-cta">
+    <div class="bottom-cta-inner reveal">
+        <div class="cta-glyph">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
             </svg>
         </div>
         <h2>Stop trading time for money</h2>
         <p>Join the waitlist for early access. We're onboarding design partners now.</p>
         <a href="mailto:dale@prodway.ai" class="btn-primary">
             Get Early Access
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
             </svg>
         </a>
-    </section>
+    </div>
+</section>
 
-    <!-- Footer -->
-    <footer>
-        <div class="footer-content">
-            <div class="footer-brand">
-                <div class="logo-icon" style="width: 24px; height: 24px;">
-                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#22c55e">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                    </svg>
-                </div>
-                © 2026 Prodway AI
+<!-- ============ FOOTER ============ -->
+<footer>
+    <div class="footer-inner">
+        <div class="footer-brand">
+            <div class="logo-mark">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
             </div>
-            <div class="footer-links">
-                <a href="mailto:dale@prodway.ai">Contact</a>
-                <a href="#">Privacy</a>
-                <a href="#">Terms</a>
-            </div>
+            &copy; 2026 Prodway AI
         </div>
-    </footer>
+        <div class="footer-links">
+            <a href="mailto:dale@prodway.ai">Contact</a>
+        </div>
+    </div>
+</footer>
+
+<!-- Scroll reveal observer -->
+<script>
+(function(){
+    var obs=new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+            if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}
+        });
+    },{threshold:0.15,rootMargin:'0px 0px -40px 0px'});
+    document.querySelectorAll('.reveal').forEach(function(el){obs.observe(el)});
+})();
+</script>
+
 </body>
 </html>
