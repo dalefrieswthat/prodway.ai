@@ -47,6 +47,19 @@ class SuggestMappingsResponse(BaseModel):
     mappings: list[dict[str, Any]]
 
 
+def _looks_like_url(value: str) -> bool:
+    """True if value looks like a URL."""
+    if not value or len(value) > 2000:
+        return False
+    v = value.lower().strip()
+    if v.startswith("http://") or v.startswith("https://"):
+        return True
+    # Common URL patterns without protocol
+    if re.match(r'^[\w.-]+\.[a-z]{2,}(/|$)', v):
+        return True
+    return False
+
+
 def _looks_like_linkedin_url(value: str) -> bool:
     """True if value looks like a LinkedIn URL; False for plain names (avoid wrong fill)."""
     if not value or len(value) > 2000:
@@ -58,6 +71,112 @@ def _looks_like_linkedin_url(value: str) -> bool:
     if v.startswith("linkedin.com/") or v.startswith("www.linkedin.com/"):
         return True
     return False
+
+
+def _looks_like_video_url(value: str) -> bool:
+    """True if value looks like a video URL (Loom, YouTube, Vimeo, etc.)."""
+    if not value:
+        return False
+    v = value.lower().strip()
+    video_domains = ['loom.com', 'youtube.com', 'youtu.be', 'vimeo.com', 'wistia.com', 'vidyard.com']
+    if any(domain in v for domain in video_domains):
+        return True
+    return _looks_like_url(value)
+
+
+def _looks_like_email(value: str) -> bool:
+    """True if value looks like an email address."""
+    if not value or len(value) > 320:
+        return False
+    return bool(re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', value.strip()))
+
+
+def _looks_like_phone(value: str) -> bool:
+    """True if value looks like a phone number."""
+    if not value:
+        return False
+    # Remove common formatting characters
+    digits = re.sub(r'[\s\-\.\(\)\+]', '', value)
+    return len(digits) >= 7 and len(digits) <= 15 and digits.isdigit()
+
+
+# Validation rules by semantic type
+VALIDATION_RULES: dict[str, tuple[callable, str]] = {
+    'email': (_looks_like_email, 'must be a valid email address'),
+    'phone': (_looks_like_phone, 'must be a valid phone number'),
+    'website': (_looks_like_url, 'must be a valid URL'),
+    'linkedinUrl': (_looks_like_linkedin_url, 'must be a LinkedIn URL'),
+    'twitterUrl': (_looks_like_url, 'must be a valid Twitter/X URL'),
+    'videoUrl': (_looks_like_video_url, 'must be a video URL (Loom, YouTube, etc.)'),
+    'pitchDeckUrl': (_looks_like_url, 'must be a valid URL'),
+}
+
+# Length constraints by semantic type
+LENGTH_CONSTRAINTS: dict[str, tuple[int, int]] = {
+    'shortDescription': (20, 500),  # Elevator pitch: 20-500 chars
+    'description': (50, 5000),  # Long description: 50-5000 chars
+    'traction': (20, 2000),
+    'problemStatement': (20, 2000),
+    'solutionStatement': (20, 2000),
+    'whyNow': (20, 1000),
+    'teamDescription': (20, 3000),
+    'uniqueAdvantage': (20, 1000),
+    'investorContext': (50, 3000),
+    'companyName': (1, 200),
+    'contactName': (2, 100),
+    'firstName': (1, 50),
+    'lastName': (1, 50),
+    'city': (1, 100),
+    'state': (1, 100),
+    'country': (1, 100),
+    'zip': (2, 20),
+}
+
+
+def validate_mapping(field: dict, value: str) -> tuple[bool, str | None]:
+    """
+    Validate a mapping value against its field's semantic type.
+    Returns (is_valid, error_message).
+    """
+    if not value or not value.strip():
+        return True, None  # Empty values are OK (just won't be filled)
+
+    semantic_type = field.get('semanticType')
+    if not semantic_type:
+        return True, None  # No semantic type, can't validate
+
+    value = value.strip()
+
+    # Check validation rules
+    if semantic_type in VALIDATION_RULES:
+        validator, error_msg = VALIDATION_RULES[semantic_type]
+        if not validator(value):
+            return False, error_msg
+
+    # Check length constraints
+    if semantic_type in LENGTH_CONSTRAINTS:
+        min_len, max_len = LENGTH_CONSTRAINTS[semantic_type]
+        if len(value) < min_len:
+            return False, f'too short (min {min_len} chars)'
+        if len(value) > max_len:
+            return False, f'too long (max {max_len} chars)'
+
+    # Special case: don't put company name in person name fields
+    if semantic_type in ('contactName', 'firstName', 'lastName'):
+        # Check if value looks like a company name (ends with Inc, LLC, etc.)
+        company_suffixes = ['inc', 'llc', 'ltd', 'corp', 'co', 'company', 'ai', 'io']
+        words = value.lower().split()
+        if words and words[-1] in company_suffixes:
+            return False, 'appears to be a company name, not a person name'
+
+    # Special case: don't put person name in URL fields
+    url_types = ['website', 'linkedinUrl', 'twitterUrl', 'videoUrl', 'pitchDeckUrl']
+    if semantic_type in url_types:
+        # If it doesn't look like a URL at all, reject
+        if not _looks_like_url(value) and 'linkedin' not in value.lower():
+            return False, 'must be a URL, not plain text'
+
+    return True, None
 
 
 def build_prompt(fields: list[dict], profile: dict, context: str | None) -> str:
@@ -86,22 +205,42 @@ User also provided this company context (use for long-form or custom fields like
 {context.strip()[:12000]}
 ---
 """
-    return f"""You are a form-fill assistant for founders and teams (e.g. YC applications, investor forms). Given form fields, a structured profile, and optional company context, output which value should fill each field.
+    return f"""You are a form-fill assistant for founders (YC applications, investor forms, etc.). Given form fields and company data, output the correct value for each field.
 
-Form fields (use Index to refer to them):
+Form fields (refer by Index):
 {fields_text}
 
-Structured profile (prefer for exact matches like email, company name):
+Company profile:
 {profile_text}
 {context_block}
 
-Respond with a JSON array only. Each element: {{ "index": <field index number>, "value": "<value from profile or context or empty string>" }}.
-- For short fields (email, name, company) use the profile.
-- For "first name" / "last name": use the first word of contactName for first name, last word for last name. Do not put a person's name in any other field type.
-- For LinkedIn / linkedin URL: use ONLY a valid URL (e.g. linkedin.com/... or https://linkedin.com/...). Never put a person's name in the LinkedIn field. If you only have a name and no URL, leave the LinkedIn field empty (omit it from the array).
-- For long-form or custom fields (description, traction, problem, solution) use the relevant part of the company context.
-Include only fields that should be filled (value non-empty). Order does not matter.
-Example: [{{ "index": 0, "value": "Acme Inc." }}, {{ "index": 2, "value": "We help startups scale infrastructure without hiring." }}]
+CRITICAL RULES - follow exactly or mappings will be rejected:
+
+1. URL FIELDS (website, linkedinUrl, videoUrl, pitchDeckUrl, twitterUrl):
+   - ONLY output valid URLs starting with http:// or https:// or domain.com format
+   - NEVER put company names or person names in URL fields
+   - If you don't have a URL, OMIT the field entirely
+
+2. NAME FIELDS (contactName, firstName, lastName):
+   - ONLY output person names, NEVER company names
+   - For firstName: first word of contactName
+   - For lastName: last word of contactName
+
+3. COMPANY NAME (companyName):
+   - ONLY use for fields asking for company/organization name
+   - NEVER put company name in description, elevator pitch, or other text fields
+
+4. DESCRIPTION FIELDS (shortDescription, description, elevator pitch):
+   - shortDescription/elevator pitch: 1-2 sentences about what the company does (20-500 chars)
+   - description: longer explanation from company context (50-5000 chars)
+   - These should be SENTENCES, not just the company name
+
+5. VIDEO URL:
+   - Must be a Loom, YouTube, Vimeo, or similar video link
+   - If no video URL exists, OMIT the field
+
+Output JSON array only: [{{ "index": N, "value": "..." }}]
+Only include fields where you have a valid, appropriate value. Omit fields rather than guess wrong.
 """
 
 
@@ -146,20 +285,28 @@ async def suggest_mappings(body: SuggestMappingsRequest) -> SuggestMappingsRespo
             mappings = []
         # Build index -> field info for validation
         fields_by_index = {i: f for i, f in enumerate(fields_data) if isinstance(f, dict)}
-        # Normalize and validate: ensure value matches field type (e.g. no name in LinkedIn URL)
+
+        # Normalize and validate mappings
         out = []
         for m in mappings:
             if not isinstance(m, dict) or "index" not in m:
                 continue
             idx = int(m["index"])
             value = str(m.get("value", "")).strip()
+            if not value:
+                continue
             field = fields_by_index.get(idx)
-            if field and field.get("semanticType") == "linkedinUrl" and value:
-                # Reject non-URLs in LinkedIn field (e.g. person name) to avoid wrong fill
-                if not _looks_like_linkedin_url(value):
-                    logger.info("Dropping mapping index %s: LinkedIn field got non-URL value", idx)
-                    continue
+            if not field:
+                continue
+            # Apply validation rules
+            is_valid, error_msg = validate_mapping(field, value)
+            if not is_valid:
+                st = field.get("semanticType", "unknown")
+                logger.info("Dropping index %s (%s): %s", idx, st, error_msg)
+                continue
             out.append({"index": idx, "value": value})
+
+        logger.info("Returning %d valid mappings", len(out))
         return SuggestMappingsResponse(mappings=out)
     except json.JSONDecodeError as e:
         logger.warning("Claude response not valid JSON: %s", e)

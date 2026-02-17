@@ -1,42 +1,71 @@
-/**
- * FormPilot WebMCP bridge — runs in page context.
- * Registers a WebMCP tool so in-browser agents (or DevTools MCP) can call
- * form-fill validation. Execution is delegated to the content script via postMessage.
- */
 (function () {
   if (typeof navigator === 'undefined' || !navigator.modelContext) return;
-  const PREFIX = 'FORMPILOT_WEBMCP_';
+  var PREFIX = 'FORMPILOT_WEBMCP_';
+
+  function sendAndWait(type, data, resultType) {
+    var requestId = PREFIX + Math.random().toString(36).slice(2);
+    return new Promise(function(resolve) {
+      var handler = function(e) {
+        if (!e.data || e.data.type !== resultType || e.data.requestId !== requestId) return;
+        window.removeEventListener('message', handler);
+        var result = e.data.result || { ok: false, error: 'No result' };
+        resolve({ content: [{ type: 'text', text: JSON.stringify(result) }] });
+      };
+      window.addEventListener('message', handler);
+      var msg = { type: type, requestId: requestId };
+      Object.keys(data).forEach(function(k) { msg[k] = data[k]; });
+      window.postMessage(msg, '*');
+    });
+  }
+
   navigator.modelContext.registerTool({
-    name: 'formpilot_validate_fill',
-    description: 'Validate that form fields were filled correctly (DOM snapshot). Call after FormPilot fill. Clears wrong values e.g. non-URL in LinkedIn field. Returns ok, errors, fixedCount.',
+    name: 'formpilot_get_suggestions',
+    description: 'Get AI suggestions for form fields',
+    inputSchema: { type: 'object', properties: {} },
+    execute: function() {
+      return sendAndWait(PREFIX + 'GET_SUGGESTIONS', {}, PREFIX + 'GET_SUGGESTIONS_RESULT');
+    },
+  });
+
+  navigator.modelContext.registerTool({
+    name: 'formpilot_fill_field',
+    description: 'Fill a form field by selector',
     inputSchema: {
       type: 'object',
       properties: {
-        fields: { type: 'array', description: 'Form field descriptors (index, selector, label, semanticType)' },
-        mappings: { type: 'array', description: 'Applied mappings (index, value)' },
-        clearWrong: { type: 'boolean', description: 'Clear fields with wrong value or type', default: true },
+        selector: { type: 'string' },
+        value: { type: 'string' },
+      },
+      required: ['selector', 'value'],
+    },
+    execute: function(args) {
+      return sendAndWait(PREFIX + 'FILL_FIELD', { selector: args.selector, value: args.value }, PREFIX + 'FILL_FIELD_RESULT');
+    },
+  });
+
+  navigator.modelContext.registerTool({
+    name: 'formpilot_validate_fill',
+    description: 'Validate filled fields',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fields: { type: 'array' },
+        mappings: { type: 'array' },
+        clearWrong: { type: 'boolean', default: true },
       },
       required: ['fields', 'mappings'],
     },
-    async execute(args) {
-      const requestId = PREFIX + Math.random().toString(36).slice(2);
-      const { fields = [], mappings = [], clearWrong = true } = args;
-      return new Promise((resolve) => {
-        const handler = (e) => {
-          if (e.data?.type !== PREFIX + 'RESULT' || e.data.requestId !== requestId) return;
-          window.removeEventListener('message', handler);
-          const result = e.data.result || { ok: false, error: 'No result' };
-          resolve({ content: [{ type: 'text', text: JSON.stringify(result) }] });
-        };
-        window.addEventListener('message', handler);
-        window.postMessage({
-          type: PREFIX + 'RUN',
-          requestId,
-          fields,
-          mappings,
-          clearWrong,
-        }, '*');
-      });
+    execute: function(args) {
+      return sendAndWait(PREFIX + 'RUN', { fields: args.fields || [], mappings: args.mappings || [], clearWrong: args.clearWrong !== false }, PREFIX + 'RESULT');
+    },
+  });
+
+  navigator.modelContext.registerTool({
+    name: 'formpilot_get_fields',
+    description: 'Detect all form fields on page',
+    inputSchema: { type: 'object', properties: {} },
+    execute: function() {
+      return sendAndWait(PREFIX + 'GET_FIELDS', {}, PREFIX + 'GET_FIELDS_RESULT');
     },
   });
 })();
