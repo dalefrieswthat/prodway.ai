@@ -79,21 +79,6 @@
         .step-body code{background:rgba(255,255,255,0.06);padding:0.125rem 0.5rem;
             border-radius:4px;font-size:0.8125rem;font-family:'SF Mono','Fira Code',monospace;color:var(--fg)}
 
-        /* Command box */
-        .cmd-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-xs);
-            padding:0.875rem 1rem;display:flex;align-items:center;justify-content:space-between;
-            gap:0.75rem;margin-top:0.75rem}
-        .cmd-text{font-family:'SF Mono','Fira Code',monospace;font-size:0.8125rem;
-            color:var(--fg-secondary);overflow-x:auto;white-space:nowrap}
-        .cmd-text .prompt{color:var(--fg-tertiary)}
-        .cmd-text .command{color:var(--accent)}
-        .copy-btn{display:grid;place-items:center;width:32px;height:32px;border-radius:var(--radius-xs);
-            border:1px solid var(--border);color:var(--fg-tertiary);cursor:pointer;flex-shrink:0;
-            transition:all var(--transition);background:transparent;font-family:inherit}
-        .copy-btn:hover{color:var(--fg);border-color:var(--border-hover);background:rgba(255,255,255,0.04)}
-        .copy-btn svg{width:14px;height:14px}
-        .copy-btn.copied{color:var(--accent);border-color:rgba(34,197,94,0.3)}
-
         /* Buttons */
         .btn-primary{display:inline-flex;align-items:center;gap:0.5rem;height:44px;padding:0 1.25rem;
             background:var(--accent);color:#000;font-weight:600;font-size:0.875rem;
@@ -177,27 +162,18 @@
     <div class="section" style="animation-delay:0.1s">
         <h2 class="section-title">1. Download the extension</h2>
         <p class="section-desc">
-            FormPilot is a Chrome extension that auto-fills any web form with your company data. Download the repo to get started.
+            FormPilot is a Chrome extension that auto-fills any web form with your company data. Download it and unzip to get started.
         </p>
 
         <div class="btn-row">
-            <a href="https://github.com/dalefrieswthat/prodway.ai/archive/refs/heads/main.zip" class="btn-primary">
+            <a href="/formpilot/formpilot-chrome.zip" class="btn-primary" download>
                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                Download ZIP
+                Download FormPilot (42 KB)
             </a>
-            <a href="https://github.com/dalefrieswthat/prodway.ai" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+            <a href="https://github.com/dalefrieswthat/prodway.ai/tree/main/apps/formpilot" target="_blank" rel="noopener noreferrer" class="btn-secondary">
                 <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-                View on GitHub
+                View Source
             </a>
-        </div>
-
-        <div class="cmd-box">
-            <div class="cmd-text">
-                <span class="prompt">$ </span><span class="command">git clone</span> https://github.com/dalefrieswthat/prodway.ai.git
-            </div>
-            <button class="copy-btn" id="copy-btn" title="Copy to clipboard">
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-            </button>
         </div>
     </div>
 
@@ -218,7 +194,7 @@
             <div class="step">
                 <div class="step-num"></div>
                 <div class="step-body">
-                    <p>Click <strong>Load unpacked</strong> and select the <code>apps/formpilot</code> folder from the downloaded repo.</p>
+                    <p>Click <strong>Load unpacked</strong> and select the unzipped <code>formpilot-chrome</code> folder.</p>
                 </div>
             </div>
             <div class="step">
@@ -285,20 +261,6 @@
         </div>
     </div>
 </footer>
-
-<script>
-document.getElementById('copy-btn').addEventListener('click',function(){
-    var b=this;
-    navigator.clipboard.writeText('git clone https://github.com/dalefrieswthat/prodway.ai.git').then(function(){
-        b.classList.add('copied');
-        b.innerHTML='<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
-        setTimeout(function(){
-            b.classList.remove('copied');
-            b.innerHTML='<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>';
-        },2000);
-    });
-});
-</script>
 
 </body>
 </html>
