@@ -36,6 +36,7 @@
       ],
       "js": [
         "lib/form-detector.js",
+        "content/overlay-manager.js",
         "content/content.js"
       ],
       "css": [

@@ -42,22 +42,80 @@
 
   function inferSemanticType(el, label, placeholder, name) {
     const text = `${(label || '').toLowerCase()} ${(placeholder || '').toLowerCase()} ${(name || '').toLowerCase()}`;
+    const isTextArea = el.tagName === 'TEXTAREA';
+    const isTextField = el.type === 'text' || el.type === 'url' || isTextArea;
+
+    // Contact info - high priority patterns
     if (/\bemail\b|e-?mail\b/.test(text) || el.type === 'email') return 'email';
     if (/\bphone|tel|mobile|fax\b/.test(text) || el.type === 'tel') return 'phone';
-    if (/\bcompany|organization|business|employer\b/.test(text)) return 'companyName';
-    if (/\bname\b.*\b(first|given)\b|first\s*name|given\s*name/.test(text)) return 'contactName';
+
+    // Video/media URLs - check before generic URL patterns
+    if (/\bvideo\b|\bloom\b|\byoutube\b|\brecord.*intro|\bintroduc.*video/.test(text)) return 'videoUrl';
+    if (/\bpitch\s*deck|\bdeck\b|\bslides?\b|\bpresentation\b/.test(text)) return 'pitchDeckUrl';
+
+    // LinkedIn - specific URL type
+    if (/\blinkedin\b/.test(text)) return 'linkedinUrl';
+
+    // Twitter/X
+    if (/\btwitter\b|\bx\.com\b|@\s*handle/.test(text)) return 'twitterUrl';
+
+    // Generic website/URL - after specific URL types
+    if (/\bwebsite\b|company\s*url|web\s*site\b/.test(text) && !isTextArea) return 'website';
+    if (/\burl\b/.test(text) && !isTextArea && !/video|linkedin|twitter|deck/.test(text)) return 'website';
+
+    // Company info
+    if (/\bcompany\s*name\b|\borganization\s*name\b|\bbusiness\s*name\b/.test(text)) return 'companyName';
+    if (/\bcompany\b|\borganization\b|\bbusiness\b|\bemployer\b/.test(text) && !isTextArea) return 'companyName';
+
+    // Name fields
+    if (/\bname\b.*\b(first|given)\b|first\s*name|given\s*name/.test(text)) return 'firstName';
     if (/\bname\b.*\b(last|family|surname)\b|last\s*name|surname/.test(text)) return 'lastName';
-    if (/\bfull\s*name|your\s*name|name\b(?!\s*of)/.test(text) && !/\b(first|last)\b/.test(text)) return 'contactName';
-    if (/\bwebsite|url|web\s*site\b/.test(text)) return 'website';
-    if (/\baddress|street|addr\b/.test(text)) return 'address';
+    if (/\bfull\s*name|your\s*name/.test(text) && !/\b(first|last)\b/.test(text)) return 'contactName';
+    // Generic "name" without company context = contact name
+    if (/\bname\b/.test(text) && !/company|organization|business|product/.test(text) && !isTextArea) return 'contactName';
+
+    // Address fields
+    if (/\bstreet|address\s*line|addr\b/.test(text) && !/email/.test(text)) return 'address';
     if (/\bcity|town\b/.test(text)) return 'city';
     if (/\bstate|region|province\b/.test(text)) return 'state';
     if (/\bzip|postal|postcode\b/.test(text)) return 'zip';
     if (/\bcountry\b/.test(text)) return 'country';
-    if (/\blinkedin\b/.test(text)) return 'linkedinUrl';
-    if (/\bdescription|about|bio\b/.test(text) && (el.tagName === 'TEXTAREA' || el.type === 'text')) return 'description';
-    if (/\btraction|metrics|revenue|users\b/.test(text)) return 'traction';
-    if (/\bproblem|solution|why\b/.test(text)) return 'problemSolution';
+
+    // Short description / elevator pitch (typically < 500 chars)
+    if (/\belevator\s*pitch\b|\bone\s*sentence\b|\bbrief(ly)?\s*describe\b|\bshort\s*description\b|\btagline\b/.test(text)) return 'shortDescription';
+    if (/\bdescribe.*in\s*(one|a)\s*sentence/.test(text)) return 'shortDescription';
+    if (/\bwhat\s*(do\s*you|does\s*your\s*company)\s*do\b/.test(text) && !isTextArea) return 'shortDescription';
+
+    // Long-form descriptions (textareas asking about company)
+    if (/\bdescription\b|\babout\b|\bbio\b|\boverview\b/.test(text) && isTextField) return 'description';
+    if (/\bdescribe\s*(your\s*)?(company|startup|business|product)\b/.test(text) && isTextArea) return 'description';
+
+    // Traction / metrics
+    if (/\btraction\b|\bmetrics\b|\brevenue\b|\busers\b|\bgrowth\b|\bkpi\b|\barr\b|\bmrr\b/.test(text)) return 'traction';
+
+    // Problem/solution
+    if (/\bproblem\b|\bpain\s*point\b/.test(text)) return 'problemStatement';
+    if (/\bsolution\b|\bhow\s*(do\s*you|does\s*it)\s*solve\b/.test(text)) return 'solutionStatement';
+    if (/\bwhy\s*(now|this|build)\b|\bwhy\s*are\s*you\b/.test(text)) return 'whyNow';
+
+    // Team / founders
+    if (/\bteam\b|\bfounders?\b|\bco-?founders?\b|\bbackground\b/.test(text) && isTextArea) return 'teamDescription';
+
+    // Funding / investment
+    if (/\bfunding\b|\braise\b|\binvestment\b|\bvaluation\b/.test(text)) return 'fundingInfo';
+    if (/\bhow\s*much.*rais(e|ing)\b|\bamount\s*seeking\b/.test(text)) return 'fundingAmount';
+
+    // Market / competition
+    if (/\bmarket\s*size\b|\btam\b|\bsam\b|\bsom\b/.test(text)) return 'marketSize';
+    if (/\bcompetitor|\bcompetition\b|\balternative\b/.test(text)) return 'competitors';
+
+    // YC-specific fields
+    if (/\bwhat.*unique\b|\bunfair\s*advantage\b|\bmoat\b/.test(text)) return 'uniqueAdvantage';
+    if (/\bhow.*hear\s*(about|of)\b|\breferr(al|ed)\b/.test(text)) return 'referralSource';
+
+    // Investor context (for investors/YC)
+    if (/\binvestor.*context\b|\bfor\s*investors\b/.test(text)) return 'investorContext';
+
     return null;
   }
 
