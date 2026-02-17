@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Install FormPilot - Prodway AI</title>
+    <meta name="description" content="Auto-fill any form with your company data. Install the FormPilot Chrome extension in under 2 minutes.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <meta name="theme-color" content="#050505">
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --bg:#050505;--surface:#0a0a0a;--card:#0f0f0f;
+            --border:rgba(255,255,255,0.08);--border-hover:rgba(255,255,255,0.14);
+            --fg:#fafafa;--fg-secondary:#a1a1aa;--fg-tertiary:#71717a;
+            --accent:#22c55e;--accent-hover:#16a34a;
+            --accent-muted:rgba(34,197,94,0.10);--accent-subtle:rgba(34,197,94,0.06);
+            --radius:16px;--radius-sm:10px;--radius-xs:6px;
+            --ease:cubic-bezier(0.25,0.1,0.25,1);
+            --spring:cubic-bezier(0.34,1.56,0.64,1);
+            --transition:0.2s var(--ease)
+        }
+        html{scroll-behavior:smooth}
+        body{
+            font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+            background:var(--bg);color:var(--fg);line-height:1.6;
+            -webkit-font-smoothing:antialiased;min-height:100vh;
+            display:flex;flex-direction:column
+        }
+        a{color:inherit;text-decoration:none}
+
+        /* Nav */
+        nav{position:sticky;top:0;z-index:100;background:rgba(5,5,5,0.72);
+            backdrop-filter:blur(24px) saturate(180%);
+            -webkit-backdrop-filter:blur(24px) saturate(180%);
+            border-bottom:1px solid var(--border)}
+        .nav-inner{max-width:720px;margin:0 auto;padding:0 2rem;height:64px;
+            display:flex;align-items:center;justify-content:space-between}
+        .logo{display:flex;align-items:center;gap:0.625rem;transition:opacity var(--transition)}
+        .logo:hover{opacity:0.8}
+        .logo-mark{width:32px;height:32px;border-radius:var(--radius-xs);
+            background:var(--accent-muted);display:grid;place-items:center}
+        .logo-mark svg{width:16px;height:16px;color:var(--accent)}
+        .logo-text{font-weight:600;font-size:1rem;letter-spacing:-0.02em}
+        .nav-link{font-size:0.8125rem;color:var(--fg-tertiary);transition:color var(--transition)}
+        .nav-link:hover{color:var(--fg)}
+
+        /* Main */
+        main{flex:1;max-width:720px;margin:0 auto;padding:3rem 2rem 5rem;width:100%}
+
+        .page-header{display:flex;align-items:center;gap:1rem;margin-bottom:2.5rem;
+            opacity:0;animation:fadeUp 0.6s var(--ease) 0.05s forwards}
+        .page-icon{width:56px;height:56px;border-radius:var(--radius-sm);
+            background:rgba(255,255,255,0.04);border:1px solid var(--border);
+            display:grid;place-items:center;flex-shrink:0}
+        .page-icon svg{width:26px;height:26px;color:var(--fg-tertiary)}
+        .page-header h1{font-size:1.625rem;font-weight:700;letter-spacing:-0.025em;line-height:1.2}
+        .subtitle{font-size:0.875rem;color:var(--fg-tertiary);margin-top:0.25rem}
+
+        /* Sections */
+        .section{opacity:0;animation:fadeUp 0.6s var(--ease) forwards}
+        .section+.section{margin-top:2.5rem;padding-top:2.5rem;border-top:1px solid var(--border)}
+        .section-title{font-size:1rem;font-weight:600;margin-bottom:0.5rem}
+        .section-desc{font-size:0.9375rem;color:var(--fg-secondary);line-height:1.65;margin-bottom:1.5rem}
+
+        /* Steps */
+        .steps{display:flex;flex-direction:column;gap:1rem;counter-reset:step}
+        .step{display:flex;gap:1rem;align-items:flex-start}
+        .step-num{counter-increment:step;width:32px;height:32px;border-radius:50%;
+            background:var(--accent-muted);color:var(--accent);font-size:0.8125rem;
+            font-weight:700;display:grid;place-items:center;flex-shrink:0;margin-top:0.125rem}
+        .step-num::before{content:counter(step)}
+        .step-body{flex:1}
+        .step-body strong{color:var(--fg);font-weight:600}
+        .step-body p{font-size:0.9375rem;color:var(--fg-secondary);line-height:1.6}
+        .step-body code{background:rgba(255,255,255,0.06);padding:0.125rem 0.5rem;
+            border-radius:4px;font-size:0.8125rem;font-family:'SF Mono','Fira Code',monospace;color:var(--fg)}
+
+        /* Command box */
+        .cmd-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-xs);
+            padding:0.875rem 1rem;display:flex;align-items:center;justify-content:space-between;
+            gap:0.75rem;margin-top:0.75rem}
+        .cmd-text{font-family:'SF Mono','Fira Code',monospace;font-size:0.8125rem;
+            color:var(--fg-secondary);overflow-x:auto;white-space:nowrap}
+        .cmd-text .prompt{color:var(--fg-tertiary)}
+        .cmd-text .command{color:var(--accent)}
+        .copy-btn{display:grid;place-items:center;width:32px;height:32px;border-radius:var(--radius-xs);
+            border:1px solid var(--border);color:var(--fg-tertiary);cursor:pointer;flex-shrink:0;
+            transition:all var(--transition);background:transparent;font-family:inherit}
+        .copy-btn:hover{color:var(--fg);border-color:var(--border-hover);background:rgba(255,255,255,0.04)}
+        .copy-btn svg{width:14px;height:14px}
+        .copy-btn.copied{color:var(--accent);border-color:rgba(34,197,94,0.3)}
+
+        /* Buttons */
+        .btn-primary{display:inline-flex;align-items:center;gap:0.5rem;height:44px;padding:0 1.25rem;
+            background:var(--accent);color:#000;font-weight:600;font-size:0.875rem;
+            border-radius:var(--radius-sm);transition:background var(--transition),transform 0.15s var(--spring)}
+        .btn-primary:hover{background:var(--accent-hover);transform:translateY(-1px)}
+        .btn-primary:active{transform:translateY(0)}
+        .btn-primary svg{width:18px;height:18px}
+        .btn-secondary{display:inline-flex;align-items:center;gap:0.5rem;height:44px;padding:0 1.25rem;
+            border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--fg-secondary);
+            font-weight:500;font-size:0.875rem;transition:all var(--transition)}
+        .btn-secondary:hover{border-color:var(--border-hover);color:var(--fg);background:rgba(255,255,255,0.03)}
+        .btn-row{display:flex;gap:0.75rem;flex-wrap:wrap}
+
+        /* Tip */
+        .tip{display:flex;gap:0.75rem;padding:1rem 1.125rem;background:var(--accent-subtle);
+            border:1px solid rgba(34,197,94,0.12);border-radius:var(--radius-xs);margin-top:1.5rem}
+        .tip-icon{flex-shrink:0;width:20px;height:20px;color:var(--accent);margin-top:1px}
+        .tip p{font-size:0.8125rem;color:var(--fg-secondary);line-height:1.6}
+        .tip strong{color:var(--fg)}
+
+        /* Back link */
+        .back-link{display:inline-flex;align-items:center;gap:0.375rem;font-size:0.8125rem;
+            color:var(--accent);transition:opacity var(--transition);margin-top:2.5rem;
+            padding-top:2.5rem;border-top:1px solid var(--border)}
+        .back-link:hover{opacity:0.75}
+        .back-link svg{width:14px;height:14px}
+
+        /* Footer */
+        footer{padding:1.5rem 2rem;border-top:1px solid var(--border)}
+        .footer-inner{max-width:720px;margin:0 auto;display:flex;align-items:center;
+            justify-content:space-between;flex-wrap:wrap;gap:1rem}
+        .footer-brand{display:flex;align-items:center;gap:0.5rem;font-size:0.8125rem;color:var(--fg-tertiary)}
+        .footer-brand .logo-mark{width:22px;height:22px}
+        .footer-brand .logo-mark svg{width:11px;height:11px}
+        .footer-links{display:flex;gap:1.5rem}
+        .footer-links a{font-size:0.8125rem;color:var(--fg-tertiary);transition:color var(--transition)}
+        .footer-links a:hover{color:var(--fg-secondary)}
+
+        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+        @media(max-width:640px){
+            main{padding:2rem 1.25rem 4rem}
+            .page-header h1{font-size:1.375rem}
+            .page-icon{width:48px;height:48px}
+            .page-icon svg{width:22px;height:22px}
+            .btn-row{flex-direction:column}
+            .btn-row a{width:100%;justify-content:center}
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="/" class="logo">
+            <div class="logo-mark">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+            </div>
+            <span class="logo-text">Prodway</span>
+        </a>
+        <a href="/#products" class="nav-link">All Products</a>
+    </div>
+</nav>
+
+<main>
+    <div class="page-header">
+        <div class="page-icon">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+            </svg>
+        </div>
+        <div>
+            <h1>FormPilot</h1>
+            <p class="subtitle">Chrome extension &middot; Free &middot; 2-minute setup</p>
+        </div>
+    </div>
+
+    <!-- Download -->
+    <div class="section" style="animation-delay:0.1s">
+        <h2 class="section-title">1. Download the extension</h2>
+        <p class="section-desc">
+            FormPilot is a Chrome extension that auto-fills any web form with your company data. Download the repo to get started.
+        </p>
+
+        <div class="btn-row">
+            <a href="https://github.com/dalefrieswthat/prodway.ai/archive/refs/heads/main.zip" class="btn-primary">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Download ZIP
+            </a>
+            <a href="https://github.com/dalefrieswthat/prodway.ai" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+                <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                View on GitHub
+            </a>
+        </div>
+
+        <div class="cmd-box">
+            <div class="cmd-text">
+                <span class="prompt">$ </span><span class="command">git clone</span> https://github.com/dalefrieswthat/prodway.ai.git
+            </div>
+            <button class="copy-btn" id="copy-btn" title="Copy to clipboard">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Install -->
+    <div class="section" style="animation-delay:0.2s">
+        <h2 class="section-title">2. Load in Chrome</h2>
+        <p class="section-desc">
+            Once you have the files, load FormPilot as an unpacked extension. Takes about 30 seconds.
+        </p>
+
+        <div class="steps">
+            <div class="step">
+                <div class="step-num"></div>
+                <div class="step-body">
+                    <p>Open <code>chrome://extensions</code> in your browser and turn on <strong>Developer mode</strong> (top-right toggle).</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num"></div>
+                <div class="step-body">
+                    <p>Click <strong>Load unpacked</strong> and select the <code>apps/formpilot</code> folder from the downloaded repo.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num"></div>
+                <div class="step-body">
+                    <p>Pin the FormPilot icon in your Chrome toolbar for quick access.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Use -->
+    <div class="section" style="animation-delay:0.3s">
+        <h2 class="section-title">3. Start filling forms</h2>
+        <p class="section-desc">
+            FormPilot auto-detects form fields on any page. Add your company data once and fill forms with a single click.
+        </p>
+
+        <div class="steps">
+            <div class="step">
+                <div class="step-num"></div>
+                <div class="step-body">
+                    <p>Click the FormPilot icon and select <strong>Edit company data</strong>. Add your company name, contact info, and any other details you typically enter on forms.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num"></div>
+                <div class="step-body">
+                    <p>Navigate to any page with a form &mdash; YC applications, vendor portals, RFPs, onboarding flows &mdash; and click <strong>Fill form</strong>.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num"></div>
+                <div class="step-body">
+                    <p>Review the auto-filled fields, make any edits, and submit. That&#39;s it.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="tip">
+            <svg class="tip-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <p><strong>No account or backend required.</strong> FormPilot stores your data locally in Chrome. Nothing leaves your browser unless you choose to sync.</p>
+        </div>
+    </div>
+
+    <a href="/" class="back-link">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        Back to Prodway
+    </a>
+</main>
+
+<footer>
+    <div class="footer-inner">
+        <div class="footer-brand">
+            <div class="logo-mark">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+            </div>
+            &copy; 2026 Prodway AI
+        </div>
+        <div class="footer-links">
+            <a href="mailto:dale@prodway.ai">Contact</a>
+        </div>
+    </div>
+</footer>
+
+<script>
+document.getElementById('copy-btn').addEventListener('click',function(){
+    var b=this;
+    navigator.clipboard.writeText('git clone https://github.com/dalefrieswthat/prodway.ai.git').then(function(){
+        b.classList.add('copied');
+        b.innerHTML='<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
+        setTimeout(function(){
+            b.classList.remove('copied');
+            b.innerHTML='<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>';
+        },2000);
+    });
+});
+</script>
+
+</body>
+</html>
