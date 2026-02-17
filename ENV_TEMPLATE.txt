@@ -52,13 +52,21 @@ DOCUSIGN_AUTH_SERVER=account-d.docusign.com
 DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi
 
 # --------------------------------------------
-# 5. DATA STORAGE (Optional — defaults to ./data)
+# 5. MERCURY (ACH Invoicing — lower fees for large invoices)
+# Get API token: Mercury Dashboard → Settings → Developers → API Tokens
+# Requires Mercury Plus or Pro plan
+# --------------------------------------------
+MERCURY_API_TOKEN=
+MERCURY_ACCOUNT_ID=
+
+# --------------------------------------------
+# 6. DATA STORAGE (Optional — defaults to ./data)
 # For production, mount a persistent volume
 # --------------------------------------------
 # DATA_DIR=/app/data
 
 # --------------------------------------------
-# 6. FORMPILOT API (separate deploy, e.g. Railway)
+# 7. FORMPILOT API (separate deploy, e.g. Railway)
 # Used by FormPilot Chrome extension for AI field mapping + Import from URL.
 # Set in Railway app variables when deploying apps/formpilot-api.
 # --------------------------------------------
