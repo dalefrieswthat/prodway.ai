@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prodway AI — Scale Your Agency Without Hiring</title>
-    <meta name="description" content="AI tools that handle proposals, contracts, and invoicing so you can focus on the work that matters.">
-    <meta property="og:title" content="Prodway AI — Scale Your Agency Without Hiring">
-    <meta property="og:description" content="AI tools that handle proposals, contracts, and invoicing so you can focus on the work that matters.">
+    <title>Prodway AI — The Autonomous Back-Office for the Service Economy</title>
+    <meta name="description" content="AI agents that deliver tens of thousands of dollars worth of service work in a fraction of the time — at 90% margins. Internal tools, turned into a global platform.">
+    <meta property="og:title" content="Prodway AI — The Autonomous Back-Office for the Service Economy">
+    <meta property="og:description" content="AI agents that deliver tens of thousands of dollars worth of service work in a fraction of the time — at 90% margins.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://prodway.ai">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,6 +25,7 @@
             --bg:             #050505;
             --surface:        #0a0a0a;
             --card:           #0f0f0f;
+            --card-elevated:  #111111;
             --border:         rgba(255, 255, 255, 0.08);
             --border-hover:   rgba(255, 255, 255, 0.14);
             --fg:             #fafafa;
@@ -35,14 +36,17 @@
             --accent-muted:   rgba(34, 197, 94, 0.10);
             --accent-subtle:  rgba(34, 197, 94, 0.06);
             --cyan:           #06b6d4;
+            --purple:         #a855f7;
+            --amber:          #f59e0b;
             --radius:         16px;
+            --radius-lg:      24px;
             --radius-sm:      10px;
             --radius-xs:      6px;
             --ease:           cubic-bezier(0.25, 0.1, 0.25, 1);
             --spring:         cubic-bezier(0.34, 1.56, 0.64, 1);
             --transition:     0.2s var(--ease);
             --max-w:          1120px;
-            --section-gap:    0;
+            --max-w-narrow:   720px;
         }
 
         html { scroll-behavior: smooth; }
@@ -57,11 +61,11 @@
             overflow-x: hidden;
         }
 
-        /* Subtle grid background — only in hero area */
+        /* Subtle grid background */
         .grid-bg {
             background-image:
-                linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+                linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
             background-size: 64px 64px;
         }
 
@@ -80,6 +84,16 @@
         @keyframes fadeIn {
             from { opacity: 0; }
             to   { opacity: 1; }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.15); }
+            50% { box-shadow: 0 0 40px rgba(34, 197, 94, 0.25); }
         }
 
         .animate-up {
@@ -115,6 +129,13 @@
            ======================================== */
         .gradient-text {
             background: linear-gradient(135deg, var(--accent), #10b981, var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .gradient-text-purple {
+            background: linear-gradient(135deg, var(--purple), #ec4899);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -171,6 +192,21 @@
             letter-spacing: -0.02em;
         }
 
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--fg-secondary);
+            transition: color var(--transition);
+        }
+
+        .nav-link:hover { color: var(--fg); }
+
         .nav-cta {
             display: inline-flex;
             align-items: center;
@@ -179,22 +215,20 @@
             font-size: 0.8125rem;
             font-weight: 500;
             border-radius: var(--radius-xs);
-            border: 1px solid var(--border);
-            color: var(--fg-secondary);
+            background: var(--accent);
+            color: #000;
             transition: all var(--transition);
         }
 
         .nav-cta:hover {
-            color: var(--fg);
-            border-color: var(--border-hover);
-            background: rgba(255, 255, 255, 0.04);
+            background: var(--accent-hover);
         }
 
         /* ========================================
            HERO
            ======================================== */
         .hero {
-            padding: 10rem 2rem 6rem;
+            padding: 11rem 2rem 7rem;
             text-align: center;
             position: relative;
         }
@@ -206,14 +240,14 @@
             top: 0;
             left: 50%;
             transform: translateX(-50%);
-            width: 800px;
-            height: 600px;
-            background: radial-gradient(ellipse at center, rgba(34, 197, 94, 0.06) 0%, transparent 70%);
+            width: 900px;
+            height: 700px;
+            background: radial-gradient(ellipse at center, rgba(34, 197, 94, 0.08) 0%, transparent 70%);
             pointer-events: none;
         }
 
         .hero-inner {
-            max-width: 680px;
+            max-width: 780px;
             margin: 0 auto;
             position: relative;
         }
@@ -239,18 +273,18 @@
         }
 
         h1 {
-            font-size: clamp(2.75rem, 6.5vw, 4.25rem);
+            font-size: clamp(2.75rem, 6.5vw, 4.5rem);
             font-weight: 700;
-            letter-spacing: -0.035em;
-            line-height: 1.08;
-            margin-bottom: 1.5rem;
+            letter-spacing: -0.04em;
+            line-height: 1.05;
+            margin-bottom: 1.75rem;
         }
 
         .hero-sub {
-            font-size: 1.125rem;
+            font-size: 1.25rem;
             color: var(--fg-secondary);
-            max-width: 480px;
-            margin: 0 auto 2.5rem;
+            max-width: 600px;
+            margin: 0 auto 3rem;
             line-height: 1.7;
         }
 
@@ -265,8 +299,8 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            height: 48px;
-            padding: 0 1.5rem;
+            height: 52px;
+            padding: 0 1.75rem;
             background: var(--accent);
             color: #000;
             font-weight: 600;
@@ -293,8 +327,8 @@
         .btn-secondary {
             display: inline-flex;
             align-items: center;
-            height: 48px;
-            padding: 0 1.5rem;
+            height: 52px;
+            padding: 0 1.75rem;
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             color: var(--fg-secondary);
@@ -310,36 +344,82 @@
         }
 
         /* ========================================
-           STATS
+           METRICS BAR
            ======================================== */
-        .stats {
+        .metrics-bar {
             padding: 4rem 2rem;
             border-top: 1px solid var(--border);
         }
 
-        .stats-grid {
-            max-width: 640px;
+        .metrics-grid {
+            max-width: 800px;
             margin: 0 auto;
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 2rem;
             text-align: center;
         }
 
-        .stat-value {
-            font-size: 2rem;
+        .metric {
+            padding: 1rem 0;
+        }
+
+        .metric-value {
+            font-size: 2.25rem;
             font-weight: 700;
             letter-spacing: -0.02em;
             line-height: 1.2;
         }
 
-        .stat-value.gradient { }
-
-        .stat-label {
+        .metric-label {
             font-size: 0.8125rem;
             font-weight: 500;
             color: var(--fg-tertiary);
-            margin-top: 0.25rem;
+            margin-top: 0.375rem;
+        }
+
+        /* ========================================
+           THESIS SECTION
+           ======================================== */
+        .thesis {
+            padding: 6rem 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .thesis-inner {
+            max-width: var(--max-w-narrow);
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .thesis h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: 1.5rem;
+            line-height: 1.3;
+        }
+
+        .thesis-text {
+            font-size: 1.125rem;
+            color: var(--fg-secondary);
+            line-height: 1.8;
+            margin-bottom: 2rem;
+        }
+
+        .thesis-highlight {
+            display: inline-block;
+            padding: 1.5rem 2rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 1rem;
+            color: var(--fg);
+            font-weight: 500;
+        }
+
+        .thesis-highlight strong {
+            color: var(--accent);
         }
 
         /* ========================================
@@ -357,14 +437,14 @@
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: var(--fg-tertiary);
-            margin-bottom: 2.5rem;
+            margin-bottom: 2rem;
         }
 
         .logos-row {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 3.5rem;
+            gap: 3rem;
             flex-wrap: wrap;
         }
 
@@ -396,39 +476,110 @@
 
         .logo-pill:hover .logo-mono { opacity: 0.9; }
 
-        .social-note {
-            margin-top: 2rem;
-            font-size: 0.875rem;
-            color: var(--fg-tertiary);
-            max-width: 480px;
-            margin-left: auto;
-            margin-right: auto;
-            line-height: 1.6;
+        /* ========================================
+           HOW IT WORKS (FLYWHEEL)
+           ======================================== */
+        .how-it-works {
+            padding: 7rem 2rem;
+            border-top: 1px solid var(--border);
+            position: relative;
         }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-eyebrow {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        .section-header h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: 0.75rem;
+        }
+
+        .section-header p {
+            color: var(--fg-secondary);
+            font-size: 1.125rem;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
+        .flywheel {
+            max-width: 960px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .flywheel-step {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            position: relative;
+            transition: all 0.3s var(--ease);
+        }
+
+        .flywheel-step:hover {
+            border-color: rgba(34, 197, 94, 0.2);
+            transform: translateY(-4px);
+        }
+
+        .flywheel-number {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--accent-muted);
+            color: var(--accent);
+            font-size: 0.875rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .flywheel-step h3 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 0.625rem;
+            letter-spacing: -0.01em;
+        }
+
+        .flywheel-step p {
+            font-size: 0.9375rem;
+            color: var(--fg-secondary);
+            line-height: 1.65;
+        }
+
+        .flywheel-arrow {
+            position: absolute;
+            right: -1.25rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--fg-tertiary);
+            z-index: 1;
+        }
+
+        .flywheel-step:last-child .flywheel-arrow { display: none; }
 
         /* ========================================
            PRODUCTS
            ======================================== */
         .products {
-            padding: 6rem 2rem;
+            padding: 7rem 2rem;
             border-top: 1px solid var(--border);
-        }
-
-        .section-header {
-            text-align: center;
-            margin-bottom: 3.5rem;
-        }
-
-        .section-header h2 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            letter-spacing: -0.025em;
-            margin-bottom: 0.5rem;
-        }
-
-        .section-header p {
-            color: var(--fg-secondary);
-            font-size: 1rem;
         }
 
         .products-grid {
@@ -615,24 +766,262 @@
             border-radius: 3px;
         }
 
+        /* Data callout under products */
+        .data-callout {
+            max-width: var(--max-w);
+            margin: 3rem auto 0;
+            padding: 1.5rem 2rem;
+            background: var(--accent-subtle);
+            border: 1px solid rgba(34, 197, 94, 0.15);
+            border-radius: var(--radius);
+            text-align: center;
+        }
+
+        .data-callout p {
+            font-size: 0.9375rem;
+            color: var(--fg-secondary);
+        }
+
+        .data-callout strong {
+            color: var(--accent);
+        }
+
+        /* ========================================
+           VISION SECTION
+           ======================================== */
+        .vision {
+            padding: 7rem 2rem;
+            border-top: 1px solid var(--border);
+            position: relative;
+        }
+
+        .vision::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 400px;
+            background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.04) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .vision-inner {
+            max-width: var(--max-w);
+            margin: 0 auto;
+            display: grid;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        @media (min-width: 900px) {
+            .vision-inner { grid-template-columns: 1fr 1fr; }
+        }
+
+        .vision-content h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .vision-content p {
+            font-size: 1.0625rem;
+            color: var(--fg-secondary);
+            line-height: 1.75;
+            margin-bottom: 1.25rem;
+        }
+
+        .vision-list {
+            list-style: none;
+            margin-top: 2rem;
+        }
+
+        .vision-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.875rem;
+            margin-bottom: 1.25rem;
+            font-size: 0.9375rem;
+            color: var(--fg-secondary);
+        }
+
+        .vision-list li:last-child { margin-bottom: 0; }
+
+        .vision-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            color: var(--accent);
+            margin-top: 0.125rem;
+        }
+
+        .vision-visual {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            position: relative;
+        }
+
+        .vision-stages {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .vision-stage {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s var(--ease);
+        }
+
+        .vision-stage:hover {
+            border-color: var(--border-hover);
+        }
+
+        .vision-stage.active {
+            border-color: var(--accent);
+            background: var(--accent-subtle);
+        }
+
+        .stage-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--fg-tertiary);
+            flex-shrink: 0;
+        }
+
+        .vision-stage.active .stage-indicator {
+            background: var(--accent);
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        .vision-stage.future .stage-indicator {
+            background: transparent;
+            border: 2px dashed var(--fg-tertiary);
+        }
+
+        .stage-content {
+            flex: 1;
+        }
+
+        .stage-content strong {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--fg);
+            margin-bottom: 0.125rem;
+        }
+
+        .stage-content span {
+            font-size: 0.8125rem;
+            color: var(--fg-tertiary);
+        }
+
+        .vision-stage.active .stage-content strong {
+            color: var(--accent);
+        }
+
+        /* ========================================
+           FOR INVESTORS SECTION
+           ======================================== */
+        .investors {
+            padding: 7rem 2rem;
+            border-top: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .investors-inner {
+            max-width: var(--max-w);
+            margin: 0 auto;
+        }
+
+        .investors-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .investors-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        .investor-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+        }
+
+        .investor-card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .investor-card-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .investor-card-icon.green {
+            background: var(--accent-muted);
+            color: var(--accent);
+        }
+
+        .investor-card-icon.purple {
+            background: rgba(168, 85, 247, 0.1);
+            color: var(--purple);
+        }
+
+        .investor-card-icon.amber {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--amber);
+        }
+
+        .investor-card h3 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 0.625rem;
+            letter-spacing: -0.01em;
+        }
+
+        .investor-card p {
+            font-size: 0.9375rem;
+            color: var(--fg-secondary);
+            line-height: 1.65;
+        }
+
         /* ========================================
            BOTTOM CTA
            ======================================== */
         .bottom-cta {
-            padding: 6rem 2rem;
+            padding: 7rem 2rem;
             border-top: 1px solid var(--border);
             text-align: center;
         }
 
         .bottom-cta-inner {
-            max-width: 520px;
+            max-width: 580px;
             margin: 0 auto;
         }
 
         .cta-glyph {
-            width: 52px;
-            height: 52px;
-            margin: 0 auto 1.5rem;
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 2rem;
             border-radius: var(--radius);
             background: var(--accent-muted);
             display: grid;
@@ -640,30 +1029,30 @@
         }
 
         .cta-glyph svg {
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             color: var(--accent);
         }
 
         .bottom-cta h2 {
-            font-size: 1.625rem;
+            font-size: 2rem;
             font-weight: 700;
             letter-spacing: -0.025em;
-            margin-bottom: 0.625rem;
+            margin-bottom: 0.75rem;
         }
 
         .bottom-cta p {
             color: var(--fg-secondary);
-            font-size: 1rem;
-            margin-bottom: 2rem;
-            line-height: 1.6;
+            font-size: 1.0625rem;
+            margin-bottom: 2.5rem;
+            line-height: 1.65;
         }
 
         /* ========================================
            FOOTER
            ======================================== */
         footer {
-            padding: 1.5rem 2rem;
+            padding: 2rem;
             border-top: 1px solid var(--border);
         }
 
@@ -711,27 +1100,43 @@
         /* ========================================
            RESPONSIVE
            ======================================== */
+        @media (max-width: 900px) {
+            .flywheel {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+            }
+            .flywheel-arrow { display: none; }
+        }
+
         @media (max-width: 767px) {
-            .hero { padding: 8rem 1.25rem 4rem; }
+            .hero { padding: 9rem 1.25rem 5rem; }
             h1 { font-size: 2.25rem; }
-            .hero-sub { font-size: 1rem; }
-            .stats { padding: 3rem 1.25rem; }
-            .stats-grid { gap: 1.5rem; }
-            .stat-value { font-size: 1.625rem; }
+            .hero-sub { font-size: 1.0625rem; }
+            .metrics-bar { padding: 3rem 1.25rem; }
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+            .metric-value { font-size: 1.75rem; }
+            .thesis { padding: 5rem 1.25rem; }
             .social-proof { padding: 3rem 1.25rem; }
             .logos-row { gap: 1rem; }
             .logo-pill { height: 40px; padding: 0 1rem; }
             .logo-pill img { height: 18px; }
-            .products { padding: 4rem 1.25rem; }
+            .how-it-works { padding: 5rem 1.25rem; }
+            .products { padding: 5rem 1.25rem; }
             .card { padding: 1.5rem; }
-            .bottom-cta { padding: 4rem 1.25rem; }
+            .vision { padding: 5rem 1.25rem; }
+            .investors { padding: 5rem 1.25rem; }
+            .bottom-cta { padding: 5rem 1.25rem; }
             .footer-inner { justify-content: center; text-align: center; }
+            .nav-links { display: none; }
         }
 
         @media (max-width: 400px) {
             .nav-inner { padding: 0 1rem; }
             .cta-group { flex-direction: column; align-items: stretch; }
-            .stats-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+            .metrics-grid { grid-template-columns: 1fr; gap: 1.25rem; }
         }
     </style>
 
@@ -758,6 +1163,11 @@
             </div>
             <span class="logo-text">Prodway</span>
         </a>
+        <div class="nav-links">
+            <a href="#how-it-works" class="nav-link">How it works</a>
+            <a href="#products" class="nav-link">Products</a>
+            <a href="#vision" class="nav-link">Vision</a>
+        </div>
         <a href="mailto:dale@prodway.ai" class="nav-cta">Get Early Access</a>
     </div>
 </nav>
@@ -769,65 +1179,70 @@
             <svg fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
             </svg>
-            Now in Private Beta
+            YC W26 Applicant
         </div>
 
         <h1 class="animate-up delay-1">
-            Scale your agency<br>
-            <span class="gradient-text">without hiring</span>
+            The autonomous back-office<br>
+            <span class="gradient-text">for the service economy</span>
         </h1>
 
         <p class="hero-sub animate-up delay-2">
-            AI tools that handle proposals, contracts, and invoicing — so you can focus on the work that matters.
+            Our AI agents deliver tens of thousands of dollars worth of service work in a fraction of the time — at 90% margins. We're turning internal tools into a global platform.
         </p>
 
         <div class="cta-group animate-up delay-3">
             <a href="mailto:dale@prodway.ai" class="btn-primary">
-                Request Access
+                Partner With Us
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
                 </svg>
             </a>
-            <a href="#products" class="btn-secondary">See Products</a>
+            <a href="#how-it-works" class="btn-secondary">See How It Works</a>
         </div>
     </div>
 </section>
 
-<!-- ============ STATS ============ -->
-<section class="stats">
-    <div class="stats-grid reveal">
-        <div>
-            <div class="stat-value gradient-text" id="stat-fields-filled">&mdash;</div>
-            <div class="stat-label">Fields Filled</div>
+<!-- ============ METRICS BAR ============ -->
+<section class="metrics-bar">
+    <div class="metrics-grid reveal">
+        <div class="metric">
+            <div class="metric-value gradient-text">90%</div>
+            <div class="metric-label">Profit Margins</div>
         </div>
-        <div>
-            <div class="stat-value gradient-text">60s</div>
-            <div class="stat-label">Request to SOW</div>
+        <div class="metric">
+            <div class="metric-value gradient-text">60s</div>
+            <div class="metric-label">SOW Generation</div>
         </div>
-        <div>
-            <div class="stat-value gradient-text">1-Click</div>
-            <div class="stat-label">E-Signatures</div>
+        <div class="metric">
+            <div class="metric-value gradient-text">$50k+</div>
+            <div class="metric-label">Work Delivered</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value gradient-text">1</div>
+            <div class="metric-label">Employee</div>
         </div>
     </div>
 </section>
-<script>
-(function(){
-    var el=document.getElementById('stat-fields-filled');
-    if(!el)return;
-    fetch('https://api.prodway.ai/prodway/stats')
-        .then(function(r){return r.json()})
-        .then(function(d){
-            var n=d&&typeof d.forms_filled==='number'?d.forms_filled:0;
-            el.textContent=n>=1000?(Math.floor(n/1000)+'k+'):(n+'+');
-        })
-        .catch(function(){el.textContent='\u2014'});
-})();
-</script>
+
+<!-- ============ THESIS ============ -->
+<section class="thesis">
+    <div class="thesis-inner reveal">
+        <h2>We built the tools to run our own consulting practice. Now we're turning them into a platform.</h2>
+        <p class="thesis-text">
+            Every SOW we generate, every form we fill, every decision we make — it all trains the system.
+            We're building the <strong>system of action</strong> for consultants, starting with the SOW-to-invoice pipeline.
+        </p>
+        <div class="thesis-highlight">
+            <strong>The thesis:</strong> AI-enabled efficiency turns internal tools into a global platform.
+        </div>
+    </div>
+</section>
 
 <!-- ============ SOCIAL PROOF ============ -->
 <section class="social-proof">
     <div class="reveal">
-        <p class="social-proof-label">Trusted by companies backed by</p>
+        <p class="social-proof-label">Built for companies backed by</p>
         <div class="logos-row">
             <div class="logo-pill">
                 <img src="/logos/ycombinator.svg" alt="Y Combinator" class="logo-yc"
@@ -842,17 +1257,50 @@
                      onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\'font-weight:500;font-size:1.125rem;color:var(--fg)\'>a16z</span>'">
             </div>
         </div>
-        <p class="social-note">
-            We build AI infrastructure for funded startups navigating rapid growth.
-        </p>
+    </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how-it-works" class="how-it-works">
+    <div class="section-header reveal">
+        <span class="section-eyebrow">The Flywheel</span>
+        <h2>Every interaction trains the platform</h2>
+        <p>Products that get smarter with use. Data that compounds into defensibility.</p>
+    </div>
+
+    <div class="flywheel">
+        <div class="flywheel-step reveal">
+            <div class="flywheel-number">1</div>
+            <h3>Capture</h3>
+            <p>Every SOW, form fill, and decision creates structured training data from real consulting workflows.</p>
+            <svg class="flywheel-arrow" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+            </svg>
+        </div>
+
+        <div class="flywheel-step reveal">
+            <div class="flywheel-number">2</div>
+            <h3>Learn</h3>
+            <p>Context folders, decision patterns, and successful outcomes become the brain of the platform.</p>
+            <svg class="flywheel-arrow" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+            </svg>
+        </div>
+
+        <div class="flywheel-step reveal">
+            <div class="flywheel-number">3</div>
+            <h3>Compound</h3>
+            <p>Better outputs → more usage → more data → better outputs. AI-native network effects.</p>
+        </div>
     </div>
 </section>
 
 <!-- ============ PRODUCTS ============ -->
 <section id="products" class="products">
     <div class="section-header reveal">
-        <h2>Two products. One mission.</h2>
-        <p>Eliminate busywork from your consulting business.</p>
+        <span class="section-eyebrow">Products</span>
+        <h2>Two products. 90% margins.</h2>
+        <p>AI agents that replace back-office work entirely — and train the platform as they work.</p>
     </div>
 
     <div class="products-grid">
@@ -867,7 +1315,7 @@
             </div>
 
             <p class="card-desc">
-                Generate professional SOWs from a single Slack command. Send for e-signature. Invoice automatically.
+                Generate professional SOWs from a single Slack command. Send for e-signature. Invoice automatically. The complete SOW-to-invoice pipeline.
             </p>
 
             <div class="code-sample">
@@ -889,7 +1337,7 @@
                 </li>
                 <li>
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    Slack-native
+                    Training data
                 </li>
             </ul>
 
@@ -913,7 +1361,7 @@
             </div>
 
             <p class="card-desc">
-                Auto-fill any form with your company data. YC applications, vendor portals, RFPs &mdash; done in seconds.
+                Auto-fill any form with your company data. YC applications, vendor portals, RFPs — done in seconds. Every fill improves the model.
             </p>
 
             <div class="code-sample">
@@ -935,7 +1383,7 @@
                 </li>
                 <li>
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    Field matching
+                    Field learning
                 </li>
             </ul>
 
@@ -944,6 +1392,116 @@
                     Install FormPilot
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
                 </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="data-callout reveal">
+        <p>Every product interaction generates training data. <strong>The more you use it, the smarter it gets.</strong></p>
+    </div>
+</section>
+
+<!-- ============ VISION ============ -->
+<section id="vision" class="vision">
+    <div class="vision-inner">
+        <div class="vision-content reveal">
+            <h2>From tools to platform to <span class="gradient-text-purple">fractional CTO</span></h2>
+            <p>
+                We're not just building point solutions. We're training an AI to replicate expert consultants —
+                the architect explaining technical decisions, the ops person navigating complex systems.
+            </p>
+            <p>
+                Every cursor session, every SOW, every architecture decision becomes training data for the next evolution of the platform.
+            </p>
+
+            <ul class="vision-list">
+                <li>
+                    <svg class="vision-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span><strong>Slack-native:</strong> Lives where your team already works</span>
+                </li>
+                <li>
+                    <svg class="vision-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span><strong>Notion-connected:</strong> Pulls context from your decision docs</span>
+                </li>
+                <li>
+                    <svg class="vision-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span><strong>GitHub-aware:</strong> Reviews PRs with your architecture in mind</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="vision-visual reveal">
+            <div class="vision-stages">
+                <div class="vision-stage active">
+                    <div class="stage-indicator"></div>
+                    <div class="stage-content">
+                        <strong>Now: SOW-to-Invoice Pipeline</strong>
+                        <span>SowFlow + FormPilot live and generating data</span>
+                    </div>
+                </div>
+                <div class="vision-stage">
+                    <div class="stage-indicator"></div>
+                    <div class="stage-content">
+                        <strong>Next: Technical Q&A Agent</strong>
+                        <span>Answer architecture questions from indexed context</span>
+                    </div>
+                </div>
+                <div class="vision-stage future">
+                    <div class="stage-indicator"></div>
+                    <div class="stage-content">
+                        <strong>Future: Autonomous Fractional CTO</strong>
+                        <span>Full-service AI consultant in your Slack</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ FOR INVESTORS ============ -->
+<section class="investors">
+    <div class="investors-inner">
+        <div class="section-header reveal">
+            <span class="section-eyebrow">For Investors</span>
+            <h2>Why this wins</h2>
+            <p>Three compounding advantages that create long-term defensibility.</p>
+        </div>
+
+        <div class="investors-grid">
+            <div class="investor-card reveal">
+                <div class="investor-card-icon green">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                </div>
+                <h3>90% Margins</h3>
+                <p>Software economics on services work. AI agents deliver $50k+ value at near-zero marginal cost.</p>
+            </div>
+
+            <div class="investor-card reveal">
+                <div class="investor-card-icon purple">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+                    </svg>
+                </div>
+                <h3>Data Moat</h3>
+                <p>Every interaction trains the model. Usage creates the training data that makes the product better.</p>
+            </div>
+
+            <div class="investor-card reveal">
+                <div class="investor-card-icon amber">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <h3>Dogfooding</h3>
+                <p>We run our own consulting practice on these tools. De-risked product-market fit from day one.</p>
             </div>
         </div>
     </div>
@@ -957,10 +1515,10 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
             </svg>
         </div>
-        <h2>Stop trading time for money</h2>
-        <p>Join the waitlist for early access. We're onboarding design partners now.</p>
+        <h2>Building the future of service delivery</h2>
+        <p>We're looking for design partners and investors who believe AI can transform the $1T+ professional services market.</p>
         <a href="mailto:dale@prodway.ai" class="btn-primary">
-            Get Early Access
+            Let's Talk
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
             </svg>
@@ -980,7 +1538,7 @@
             &copy; 2026 Prodway AI
         </div>
         <div class="footer-links">
-            <a href="mailto:dale@prodway.ai">Contact</a>
+            <a href="mailto:dale@prodway.ai">dale@prodway.ai</a>
         </div>
     </div>
 </footer>
