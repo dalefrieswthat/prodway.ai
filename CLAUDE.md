@@ -1,8 +1,9 @@
 # Prodway AI - Project Context
 
 ## Company
-Prodway AI builds AI tools for service businesses to scale without headcount.
-Products: **SowFlow** (Slack SOW generation + DocuSign + Stripe) and **FormPilot** (Chrome form auto-fill).
+**Prodway AI** is the autonomous back-office for the specialized service economy. Our AI agents deliver tens of thousands of dollars worth of service work in a fraction of the time — at 90% margins. We're turning internal tools into a global platform, building the system of action for consultants. Starting with the SOW-to-invoice pipeline.
+
+Products: **SowFlow** (SOW-to-invoice via Slack) and **FormPilot** (Chrome form auto-fill).
 Domain: prodway.ai. Target: funded startups (YC, Antler, a16z).
 
 ## Code Search
