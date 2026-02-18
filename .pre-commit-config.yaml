@@ -6,6 +6,11 @@ repos:
         entry: scripts/check-no-cursor-coauthor.sh
         language: system
         stages: [commit-msg]
+      - id: bump-formpilot-version
+        name: bump FormPilot semver on formpilot changes
+        entry: scripts/pre-commit-bump-formpilot.sh
+        language: system
+        files: ^apps/formpilot/
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:

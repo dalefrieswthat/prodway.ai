@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FormPilot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Auto-fill forms with your company data. YC applications, vendor forms, RFPs\u2014done in seconds.",
   "permissions": [
     "storage",
