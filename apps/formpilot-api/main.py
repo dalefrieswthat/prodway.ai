@@ -39,6 +39,13 @@ class SuggestMappingsRequest(BaseModel):
     context: str | None = None
 
 
+class SuggestFieldRequest(BaseModel):
+    field: dict[str, Any]
+    nearby_fields: list[dict[str, Any]] = []
+    profile: dict[str, Any] = {}
+    context: str | None = None
+
+
 class ImportFromUrlRequest(BaseModel):
     url: str
 
@@ -182,6 +189,7 @@ def validate_mapping(field: dict, value: str) -> tuple[bool, str | None]:
 def build_prompt(fields: list[dict], profile: dict, context: str | None) -> str:
     """Build prompt including optional company context for long-form / YC-style fields."""
     field_summary = []
+    prefilled_summary = []
     for i, f in enumerate(fields):
         parts = [f"Index {i}"]
         if f.get("selector"):
@@ -194,6 +202,10 @@ def build_prompt(fields: list[dict], profile: dict, context: str | None) -> str:
             parts.append(f"name={f['name']!r}")
         if f.get("semanticType"):
             parts.append(f"semanticType={f['semanticType']!r}")
+        current_value = (f.get("value") or "").strip()
+        if current_value:
+            parts.append(f"currentValue={current_value!r}")
+            prefilled_summary.append(f"  Index {i} ({f.get('label') or f.get('name') or f'field {i}'}): {current_value!r}")
         field_summary.append(" ".join(parts))
     fields_text = "\n".join(field_summary)
     profile_text = json.dumps({k: v for k, v in profile.items() if v}, indent=2)
@@ -205,6 +217,12 @@ User also provided this company context (use for long-form or custom fields like
 {context.strip()[:12000]}
 ---
 """
+    prefilled_block = ""
+    if prefilled_summary:
+        prefilled_block = f"""
+Some fields are already filled in on the form. Use these existing values as context to better understand who is filling the form. Do NOT re-output values for fields that already have a currentValue — only fill EMPTY fields:
+{chr(10).join(prefilled_summary)}
+"""
     return f"""You are a form-fill assistant for founders (YC applications, investor forms, etc.). Given form fields and company data, output the correct value for each field.
 
 Form fields (refer by Index):
@@ -212,30 +230,32 @@ Form fields (refer by Index):
 
 Company profile:
 {profile_text}
-{context_block}
+{context_block}{prefilled_block}
 
 CRITICAL RULES - follow exactly or mappings will be rejected:
 
-1. URL FIELDS (website, linkedinUrl, videoUrl, pitchDeckUrl, twitterUrl):
+1. SKIP fields that already have a currentValue — only fill empty fields.
+
+2. URL FIELDS (website, linkedinUrl, videoUrl, pitchDeckUrl, twitterUrl):
    - ONLY output valid URLs starting with http:// or https:// or domain.com format
    - NEVER put company names or person names in URL fields
    - If you don't have a URL, OMIT the field entirely
 
-2. NAME FIELDS (contactName, firstName, lastName):
+3. NAME FIELDS (contactName, firstName, lastName):
    - ONLY output person names, NEVER company names
    - For firstName: first word of contactName
    - For lastName: last word of contactName
 
-3. COMPANY NAME (companyName):
+4. COMPANY NAME (companyName):
    - ONLY use for fields asking for company/organization name
    - NEVER put company name in description, elevator pitch, or other text fields
 
-4. DESCRIPTION FIELDS (shortDescription, description, elevator pitch):
+5. DESCRIPTION FIELDS (shortDescription, description, elevator pitch):
    - shortDescription/elevator pitch: 1-2 sentences about what the company does (20-500 chars)
    - description: longer explanation from company context (50-5000 chars)
    - These should be SENTENCES, not just the company name
 
-5. VIDEO URL:
+6. VIDEO URL:
    - Must be a Loom, YouTube, Vimeo, or similar video link
    - If no video URL exists, OMIT the field
 
@@ -314,6 +334,95 @@ async def suggest_mappings(body: SuggestMappingsRequest) -> SuggestMappingsRespo
     except Exception as e:
         logger.exception("Anthropic call failed")
         raise HTTPException(status_code=502, detail="AI mapping temporarily unavailable")
+
+
+@app.post("/formpilot/suggest-field")
+async def suggest_field(body: SuggestFieldRequest) -> dict:
+    """
+    Suggest a value for a single field using minimal tokens.
+    The sparkle icon sends field context + nearby fields for a targeted suggestion.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        return {"value": None, "reasoning": "API key not configured"}
+
+    field = body.field
+    nearby = body.nearby_fields or []
+    profile = body.profile or {}
+    context = (body.context or "").strip() or None
+
+    field_desc = []
+    if field.get("label"):
+        field_desc.append(f"Label: {field['label']}")
+    if field.get("placeholder"):
+        field_desc.append(f"Placeholder: {field['placeholder']}")
+    if field.get("name"):
+        field_desc.append(f"HTML name: {field['name']}")
+    if field.get("semanticType"):
+        field_desc.append(f"Detected type: {field['semanticType']}")
+    if field.get("tagName"):
+        field_desc.append(f"Element: {field['tagName']}")
+
+    nearby_desc = ""
+    if nearby:
+        nearby_lines = []
+        for nf in nearby[:8]:
+            label = nf.get("label") or nf.get("placeholder") or nf.get("name") or "unknown"
+            val = (nf.get("value") or "").strip()
+            if val:
+                nearby_lines.append(f"  - {label}: \"{val}\"")
+            else:
+                nearby_lines.append(f"  - {label}: (empty)")
+        nearby_desc = f"\nOther fields on the form (for context):\n" + "\n".join(nearby_lines)
+
+    profile_text = json.dumps({k: v for k, v in profile.items() if v}, indent=2) if profile else "{}"
+
+    context_block = ""
+    if context:
+        context_block = f"\nCompany context:\n{context[:4000]}"
+
+    prompt = f"""Given this specific form field, suggest the best value to fill in based on the company data.
+
+Target field:
+{chr(10).join(field_desc)}
+{nearby_desc}
+
+Company profile:
+{profile_text}
+{context_block}
+
+Respond with JSON only: {{"value": "the value to fill", "reasoning": "brief explanation of why this is the right value"}}
+If you don't have enough information to confidently fill this field, respond: {{"value": null, "reasoning": "why"}}"""
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=512,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = (msg.content[0].text if msg.content else "").strip()
+        if "```" in text:
+            start = text.find("{")
+            end = text.rfind("}") + 1
+            if start >= 0 and end > start:
+                text = text[start:end]
+        data = json.loads(text)
+        value = data.get("value")
+        reasoning = data.get("reasoning", "")
+
+        if value:
+            is_valid, error_msg = validate_mapping(field, str(value))
+            if not is_valid:
+                return {"value": None, "reasoning": error_msg}
+
+        return {"value": value, "reasoning": reasoning}
+    except (json.JSONDecodeError, KeyError):
+        return {"value": None, "reasoning": "Could not parse AI response"}
+    except Exception as e:
+        logger.exception("suggest-field failed")
+        return {"value": None, "reasoning": "AI temporarily unavailable"}
 
 
 def _strip_html(html: str) -> str:
