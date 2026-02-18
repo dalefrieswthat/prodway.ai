@@ -17,6 +17,8 @@ import re
 import uuid
 import base64
 import logging
+import secrets
+import hashlib
 from datetime import datetime
 from pathlib import Path
 
@@ -26,8 +28,10 @@ load_dotenv()  # Load .env file from current directory or parent
 
 import stripe
 import httpx
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, Depends, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, Field
 from anthropic import Anthropic
 from slack_bolt import App
 from slack_bolt.oauth.oauth_settings import OAuthSettings
@@ -64,6 +68,10 @@ DOCUSIGN_BASE_URL = os.environ.get(
 
 APP_URL = os.environ.get("APP_URL", "https://api.prodway.ai")
 
+# Mercury (direct API — not per-customer OAuth for now)
+MERCURY_API_TOKEN = os.environ.get("MERCURY_API_TOKEN", "")
+MERCURY_ACCOUNT_ID = os.environ.get("MERCURY_ACCOUNT_ID", "")
+
 # Data directories (file-based storage for MVP — upgrade to Postgres later)
 DATA_DIR = Path(os.environ.get("DATA_DIR", "./data"))
 for _dir in [
@@ -71,6 +79,8 @@ for _dir in [
     DATA_DIR / "states",
     DATA_DIR / "sows",
     DATA_DIR / "integrations",
+    DATA_DIR / "api_tokens",
+    DATA_DIR / "invoices",
 ]:
     _dir.mkdir(parents=True, exist_ok=True)
 
@@ -87,27 +97,54 @@ if STRIPE_SECRET_KEY:
 # Slack sends all events to /slack/events via HTTP POST.
 # Each workspace gets its own bot token, stored in FileInstallationStore.
 
+_CLI_MODE = len(__import__("sys").argv) > 1 and __import__("sys").argv[1] == "create-token"
+
+if _CLI_MODE:
+    # Skip Slack/server init for CLI commands
+    import sys
+    ws = sys.argv[2] if len(sys.argv) > 2 else "default"
+    label = sys.argv[3] if len(sys.argv) > 3 else "cli"
+
+    def _hash_token(token):
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    token = f"pk_{secrets.token_urlsafe(32)}"
+    token_hash = _hash_token(token)
+    meta = {
+        "hash": token_hash,
+        "workspace_id": ws,
+        "label": label,
+        "created_at": datetime.now().isoformat(),
+    }
+    api_dir = DATA_DIR / "api_tokens"
+    api_dir.mkdir(parents=True, exist_ok=True)
+    (api_dir / f"{token_hash}.json").write_text(json.dumps(meta, indent=2))
+    print(f"Token created for workspace '{ws}':")
+    print(f"  {token}")
+    print(f"\nUsage: curl -H 'Authorization: Bearer {token}' {APP_URL}/api/sows")
+    sys.exit(0)
+
 bolt_app = App(
-    signing_secret=SLACK_SIGNING_SECRET,
-    oauth_settings=OAuthSettings(
-        client_id=SLACK_CLIENT_ID,
-        client_secret=SLACK_CLIENT_SECRET,
-        scopes=[
-            "chat:write",
-            "commands",
-            "users:read",
-        ],
-        install_path="/slack/install",
-        redirect_uri_path="/slack/oauth_redirect",
-        installation_store=FileInstallationStore(
-            base_dir=str(DATA_DIR / "installations")
+        signing_secret=SLACK_SIGNING_SECRET,
+        oauth_settings=OAuthSettings(
+            client_id=SLACK_CLIENT_ID,
+            client_secret=SLACK_CLIENT_SECRET,
+            scopes=[
+                "chat:write",
+                "commands",
+                "users:read",
+            ],
+            install_path="/slack/install",
+            redirect_uri_path="/slack/oauth_redirect",
+            installation_store=FileInstallationStore(
+                base_dir=str(DATA_DIR / "installations")
+            ),
+            state_store=FileOAuthStateStore(
+                expiration_seconds=600,
+                base_dir=str(DATA_DIR / "states"),
+            ),
         ),
-        state_store=FileOAuthStateStore(
-            expiration_seconds=600,
-            base_dir=str(DATA_DIR / "states"),
-        ),
-    ),
-)
+    )
 
 
 # ============================================================================
@@ -1405,10 +1442,575 @@ def handle_app_home(client, event, context):
 
 api = FastAPI(
     title="SowFlow",
-    description="AI-Powered SOW Generation for Slack",
-    version="1.0.0",
+    description="AI-Powered SOW Generation for Slack + REST API",
+    version="2.0.0",
+)
+api.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
 )
 slack_handler = SlackRequestHandler(bolt_app)
+
+
+# ============================================================================
+# API AUTH: Bearer token middleware
+# ============================================================================
+
+API_TOKENS_DIR = DATA_DIR / "api_tokens"
+INVOICES_DIR = DATA_DIR / "invoices"
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def create_api_token(workspace_id: str, label: str = "") -> str:
+    """Create and persist a new API token for a workspace."""
+    token = f"pk_{secrets.token_urlsafe(32)}"
+    token_hash = _hash_token(token)
+    meta = {
+        "hash": token_hash,
+        "workspace_id": workspace_id,
+        "label": label,
+        "created_at": datetime.now().isoformat(),
+    }
+    path = API_TOKENS_DIR / f"{token_hash}.json"
+    path.write_text(json.dumps(meta, indent=2))
+    return token
+
+
+def resolve_token(token: str) -> dict | None:
+    """Resolve a Bearer token to workspace metadata. Returns None if invalid."""
+    token_hash = _hash_token(token)
+    path = API_TOKENS_DIR / f"{token_hash}.json"
+    if path.exists():
+        return json.loads(path.read_text())
+    return None
+
+
+async def require_api_auth(authorization: str = Header(None)):
+    """FastAPI dependency: require valid Bearer token. Returns workspace info."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+    parts = authorization.split(" ", 1)
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Invalid Authorization format (use Bearer <token>)")
+    token_info = resolve_token(parts[1])
+    if not token_info:
+        raise HTTPException(status_code=401, detail="Invalid API token")
+    return token_info
+
+
+# ============================================================================
+# PYDANTIC MODELS: API request/response shapes
+# ============================================================================
+
+
+class LineItem(BaseModel):
+    description: str
+    quantity: int = 1
+    unitAmountCents: int
+    currency: str = "usd"
+
+
+class CreateSowRequest(BaseModel):
+    title: str
+    clientName: str
+    clientEmail: str | None = None
+    description: str | None = None
+    lineItems: list[LineItem] | None = None
+    effectiveDate: str | None = None
+    expiresAt: str | None = None
+    metadata: dict | None = None
+
+
+class CustomerAddress(BaseModel):
+    line1: str | None = None
+    city: str | None = None
+    postalCode: str | None = None
+    country: str = "us"
+
+
+class Customer(BaseModel):
+    name: str
+    email: str
+    address: CustomerAddress | None = None
+
+
+class CreateInvoiceRequest(BaseModel):
+    provider: str  # "mercury" or "stripe"
+    sowId: str | None = None
+    customerId: str | None = None
+    customer: Customer | None = None
+    lineItems: list[LineItem] | None = None
+    dueDate: str | None = None
+    metadata: dict | None = None
+    collectPayment: bool = False
+
+
+class InvoiceConfig(BaseModel):
+    provider: str
+    dueDate: str | None = None
+    collectPayment: bool = False
+
+
+class CreateSowWithInvoiceRequest(BaseModel):
+    title: str
+    clientName: str
+    clientEmail: str | None = None
+    description: str | None = None
+    lineItems: list[LineItem] | None = None
+    effectiveDate: str | None = None
+    expiresAt: str | None = None
+    metadata: dict | None = None
+    invoice: InvoiceConfig
+
+
+# ============================================================================
+# MERCURY INVOICE ADAPTER
+# ============================================================================
+
+
+async def create_mercury_invoice(
+    line_items: list[dict],
+    customer: dict,
+    due_date: str | None = None,
+    collect_payment: bool = False,
+    metadata: dict | None = None,
+) -> dict:
+    """Create an invoice via Mercury API."""
+    if not MERCURY_API_TOKEN:
+        raise HTTPException(status_code=503, detail="Mercury not configured")
+
+    total_cents = sum(
+        item.get("unitAmountCents", 0) * item.get("quantity", 1)
+        for item in line_items
+    )
+
+    invoice_payload = {
+        "recipientEmail": customer.get("email"),
+        "recipientName": customer.get("name"),
+        "amount": total_cents / 100,
+        "currency": "USD",
+        "description": "; ".join(item.get("description", "") for item in line_items),
+    }
+
+    if due_date:
+        invoice_payload["dueDate"] = due_date
+
+    headers = {
+        "Authorization": f"Bearer {MERCURY_API_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            url = f"https://api.mercury.com/api/v1/account/{MERCURY_ACCOUNT_ID}/invoices"
+            resp = await client.post(url, headers=headers, json=invoice_payload)
+
+            if resp.status_code >= 400:
+                error_body = resp.text
+                logger.error("Mercury API error %s: %s", resp.status_code, error_body)
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": "mercury_error",
+                        "message": "Mercury invoice creation failed",
+                        "providerError": error_body,
+                    },
+                )
+
+            data = resp.json()
+            invoice_id = data.get("id", f"merc_{uuid.uuid4().hex[:8]}")
+
+            return {
+                "id": invoice_id,
+                "provider": "mercury",
+                "status": data.get("status", "draft"),
+                "totalCents": total_cents,
+                "currency": "usd",
+                "createdAt": datetime.now().isoformat(),
+                "invoiceUrl": data.get("invoiceUrl", ""),
+                "paymentUrl": data.get("paymentUrl", "") if collect_payment else None,
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Mercury invoice creation failed")
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "mercury_error", "message": str(e)},
+        )
+
+
+# ============================================================================
+# STRIPE INVOICE ADAPTER (API version — reuses existing Stripe Connect logic)
+# ============================================================================
+
+
+async def create_stripe_invoice_api(
+    line_items: list[dict],
+    customer_data: dict,
+    customer_id: str | None = None,
+    workspace_id: str = "",
+    due_date: str | None = None,
+    collect_payment: bool = False,
+    metadata: dict | None = None,
+) -> dict:
+    """Create a Stripe invoice via the API (uses workspace's Stripe Connect account)."""
+    stripe_account_id = get_team_stripe(workspace_id) if workspace_id else None
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(status_code=503, detail="Stripe not configured")
+
+    total_cents = sum(
+        item.get("unitAmountCents", 0) * item.get("quantity", 1)
+        for item in line_items
+    )
+
+    try:
+        connect_kwargs = {"stripe_account": stripe_account_id} if stripe_account_id else {}
+
+        # Resolve or create customer
+        if customer_id:
+            customer = stripe.Customer.retrieve(customer_id, **connect_kwargs)
+        elif customer_data.get("email"):
+            customers = stripe.Customer.list(
+                email=customer_data["email"], limit=1, **connect_kwargs
+            )
+            if customers.data:
+                customer = customers.data[0]
+            else:
+                create_kwargs = {
+                    "email": customer_data["email"],
+                    "name": customer_data.get("name", ""),
+                    "metadata": {"source": "sowflow_api"},
+                }
+                addr = customer_data.get("address")
+                if addr:
+                    create_kwargs["address"] = {
+                        "line1": addr.get("line1", ""),
+                        "city": addr.get("city", ""),
+                        "postal_code": addr.get("postalCode", ""),
+                        "country": addr.get("country", "us"),
+                    }
+                customer = stripe.Customer.create(**create_kwargs, **connect_kwargs)
+        else:
+            raise HTTPException(status_code=400, detail="customer or customerId required")
+
+        days_due = 14
+        if due_date:
+            try:
+                due_dt = datetime.fromisoformat(due_date)
+                days_due = max(1, (due_dt - datetime.now()).days)
+            except ValueError:
+                pass
+
+        invoice = stripe.Invoice.create(
+            customer=customer.id,
+            collection_method="send_invoice",
+            days_until_due=days_due,
+            metadata=metadata or {},
+            **connect_kwargs,
+        )
+
+        for item in line_items:
+            stripe.InvoiceItem.create(
+                customer=customer.id,
+                invoice=invoice.id,
+                amount=item.get("unitAmountCents", 0) * item.get("quantity", 1),
+                currency=item.get("currency", "usd"),
+                description=item.get("description", ""),
+                **connect_kwargs,
+            )
+
+        invoice = stripe.Invoice.finalize_invoice(invoice.id, **connect_kwargs)
+        stripe.Invoice.send_invoice(invoice.id, **connect_kwargs)
+
+        result = {
+            "id": invoice.id,
+            "provider": "stripe",
+            "status": invoice.status,
+            "totalCents": total_cents,
+            "currency": "usd",
+            "createdAt": datetime.now().isoformat(),
+            "invoiceUrl": invoice.hosted_invoice_url or "",
+        }
+
+        if collect_payment:
+            result["paymentUrl"] = invoice.hosted_invoice_url
+
+        return result
+
+    except HTTPException:
+        raise
+    except stripe.error.StripeError as e:
+        logger.error("Stripe API error: %s", e)
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "stripe_error",
+                "message": str(e.user_message or e),
+                "providerError": str(e),
+            },
+        )
+    except Exception as e:
+        logger.exception("Stripe invoice creation failed")
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "stripe_error", "message": str(e)},
+        )
+
+
+# ============================================================================
+# REST API ENDPOINTS: SOW + Invoice
+# ============================================================================
+
+
+@api.post("/api/sows")
+async def api_create_sow(body: CreateSowRequest, auth: dict = Depends(require_api_auth)):
+    """Create a SOW via API. Returns SOW ID, status, and URLs."""
+    workspace_id = auth.get("workspace_id", "api")
+    sow_id = f"sow_{uuid.uuid4().hex[:8]}"
+
+    total_cents = 0
+    line_items_data = []
+    if body.lineItems:
+        for item in body.lineItems:
+            item_total = item.unitAmountCents * item.quantity
+            total_cents += item_total
+            line_items_data.append(item.model_dump())
+
+    sow_data = {
+        "id": sow_id,
+        "title": body.title,
+        "client_name": body.clientName,
+        "client_email": body.clientEmail,
+        "description": body.description or "",
+        "line_items": line_items_data,
+        "effective_date": body.effectiveDate,
+        "expires_at": body.expiresAt,
+        "pricing": {
+            "total": total_cents / 100,
+            "total_cents": total_cents,
+            "currency": "usd",
+        },
+        "status": "draft",
+        "created_at": datetime.now().isoformat(),
+        "_team_id": workspace_id,
+        "_source": "api",
+        "metadata": body.metadata or {},
+    }
+
+    save_sow(sow_id, sow_data)
+
+    return {
+        "id": sow_id,
+        "status": "draft",
+        "title": body.title,
+        "clientName": body.clientName,
+        "totalCents": total_cents,
+        "currency": "usd",
+        "createdAt": sow_data["created_at"],
+        "viewUrl": f"{APP_URL}/sows/{sow_id}",
+        "editUrl": f"{APP_URL}/sows/{sow_id}/edit",
+    }
+
+
+@api.post("/api/invoices")
+async def api_create_invoice(body: CreateInvoiceRequest, auth: dict = Depends(require_api_auth)):
+    """Create an invoice via Mercury or Stripe. Returns invoice ID, status, URLs."""
+    workspace_id = auth.get("workspace_id", "api")
+
+    if body.provider not in ("mercury", "stripe"):
+        raise HTTPException(status_code=400, detail='provider must be "mercury" or "stripe"')
+
+    # Resolve line items from SOW or request body
+    line_items = []
+    sow_id = body.sowId
+
+    if sow_id:
+        sow = load_sow(sow_id)
+        if not sow:
+            raise HTTPException(status_code=404, detail=f"SOW {sow_id} not found")
+        existing_items = sow.get("line_items", [])
+        if existing_items:
+            line_items = existing_items
+        elif sow.get("pricing", {}).get("total_cents"):
+            line_items = [{
+                "description": f"SOW: {sow.get('title', 'Project')}",
+                "quantity": 1,
+                "unitAmountCents": sow["pricing"]["total_cents"],
+                "currency": "usd",
+            }]
+
+    if body.lineItems:
+        line_items = [item.model_dump() for item in body.lineItems]
+
+    if not line_items:
+        raise HTTPException(status_code=400, detail="lineItems required (or provide sowId with pricing)")
+
+    # Resolve customer
+    customer_data = {}
+    if body.customer:
+        customer_data = body.customer.model_dump()
+    elif sow_id:
+        sow = load_sow(sow_id)
+        if sow:
+            customer_data = {
+                "name": sow.get("client_name", ""),
+                "email": sow.get("client_email", ""),
+            }
+
+    if not customer_data.get("email") and not body.customerId:
+        raise HTTPException(status_code=400, detail="customer.email or customerId required")
+
+    # Create invoice with provider
+    if body.provider == "mercury":
+        result = await create_mercury_invoice(
+            line_items=line_items,
+            customer=customer_data,
+            due_date=body.dueDate,
+            collect_payment=body.collectPayment,
+            metadata=body.metadata,
+        )
+    else:
+        result = await create_stripe_invoice_api(
+            line_items=line_items,
+            customer_data=customer_data,
+            customer_id=body.customerId,
+            workspace_id=workspace_id,
+            due_date=body.dueDate,
+            collect_payment=body.collectPayment,
+            metadata=body.metadata,
+        )
+
+    result["sowId"] = sow_id
+
+    # Persist invoice record
+    inv_path = INVOICES_DIR / f"{result['id']}.json"
+    inv_path.write_text(json.dumps({
+        **result,
+        "workspace_id": workspace_id,
+        "customer": customer_data,
+    }, indent=2, default=str))
+
+    # Update SOW status if linked
+    if sow_id:
+        sow = load_sow(sow_id)
+        if sow:
+            sow["status"] = "invoiced"
+            sow[f"{body.provider}_invoice_id"] = result["id"]
+            save_sow(sow_id, sow)
+
+    return result
+
+
+@api.post("/api/sows/with-invoice")
+async def api_create_sow_with_invoice(
+    body: CreateSowWithInvoiceRequest,
+    auth: dict = Depends(require_api_auth),
+):
+    """Create SOW and invoice in one step."""
+    # Step 1: Create SOW
+    sow_request = CreateSowRequest(
+        title=body.title,
+        clientName=body.clientName,
+        clientEmail=body.clientEmail,
+        description=body.description,
+        lineItems=body.lineItems,
+        effectiveDate=body.effectiveDate,
+        expiresAt=body.expiresAt,
+        metadata=body.metadata,
+    )
+    sow_result = await api_create_sow(sow_request, auth)
+
+    # Step 2: Create invoice
+    invoice_request = CreateInvoiceRequest(
+        provider=body.invoice.provider,
+        sowId=sow_result["id"],
+        customer=Customer(
+            name=body.clientName,
+            email=body.clientEmail or "",
+        ) if body.clientEmail else None,
+        lineItems=body.lineItems,
+        dueDate=body.invoice.dueDate,
+        collectPayment=body.invoice.collectPayment,
+    )
+    invoice_result = await api_create_invoice(invoice_request, auth)
+
+    return {
+        "sow": sow_result,
+        "invoice": invoice_result,
+    }
+
+
+@api.post("/api/tokens")
+async def api_create_token(req: Request, auth: dict = Depends(require_api_auth)):
+    """Create a new API token for the workspace. Requires existing valid token."""
+    body = await req.json()
+    workspace_id = auth.get("workspace_id", "")
+    label = body.get("label", "")
+
+    token = create_api_token(workspace_id, label)
+
+    return {
+        "token": token,
+        "workspace_id": workspace_id,
+        "label": label,
+        "createdAt": datetime.now().isoformat(),
+    }
+
+
+@api.get("/api/sows/{sow_id}")
+async def api_get_sow(sow_id: str, auth: dict = Depends(require_api_auth)):
+    """Get a SOW by ID."""
+    sow = load_sow(sow_id)
+    if not sow:
+        raise HTTPException(status_code=404, detail="SOW not found")
+
+    workspace_id = auth.get("workspace_id", "")
+    if sow.get("_team_id") != workspace_id and sow.get("_team_id") != "api":
+        raise HTTPException(status_code=403, detail="Not your SOW")
+
+    return {
+        "id": sow["id"],
+        "status": sow.get("status", "draft"),
+        "title": sow.get("title", ""),
+        "clientName": sow.get("client_name", ""),
+        "clientEmail": sow.get("client_email"),
+        "description": sow.get("description", ""),
+        "lineItems": sow.get("line_items", []),
+        "totalCents": sow.get("pricing", {}).get("total_cents", 0),
+        "currency": "usd",
+        "createdAt": sow.get("created_at", ""),
+        "viewUrl": f"{APP_URL}/sows/{sow['id']}",
+        "editUrl": f"{APP_URL}/sows/{sow['id']}/edit",
+        "metadata": sow.get("metadata", {}),
+    }
+
+
+@api.get("/api/sows")
+async def api_list_sows(auth: dict = Depends(require_api_auth)):
+    """List SOWs for the workspace."""
+    workspace_id = auth.get("workspace_id", "")
+    sows = list_sows(team_id=workspace_id)
+
+    return {
+        "sows": [
+            {
+                "id": s["id"],
+                "status": s.get("status", "draft"),
+                "title": s.get("title", ""),
+                "clientName": s.get("client_name", ""),
+                "totalCents": s.get("pricing", {}).get("total_cents", 0),
+                "createdAt": s.get("created_at", ""),
+            }
+            for s in sows[:50]
+        ]
+    }
 
 
 @api.get("/")
@@ -1770,7 +2372,8 @@ if __name__ == "__main__":
     import uvicorn
 
     port = int(os.environ.get("PORT", 3000))
-    logger.info(f"⚡ Starting SowFlow on port {port}")
+    logger.info(f"Starting SowFlow on port {port}")
     logger.info(f"   Install: {APP_URL}/slack/install")
     logger.info(f"   Health:  {APP_URL}/health")
+    logger.info(f"   API:     {APP_URL}/api/sows")
     uvicorn.run(api, host="0.0.0.0", port=port)
