@@ -1,7 +1,7 @@
 /**
- * FormPilot content script — WebMCP-style with inline overlays.
- * Shows Apply/Edit/Deny overlays above form fields as they scroll into view.
- * Uses IntersectionObserver for lazy suggestion loading.
+ * FormPilot content script — on-demand AI suggestions via sparkle icons.
+ * Detects form fields, places sparkle buttons, and calls AI only when clicked.
+ * Zero API calls on page load.
  */
 (function () {
   var SCRIPT_TAG = 'formpilot-content';
@@ -12,11 +12,7 @@
 
   // State
   var cachedFields = null;
-  var cachedMappings = new Map(); // selector -> { value, confidence }
-  var pendingFieldRequests = new Set();
-  var visibilityObserver = null;
   var mutationObserver = null;
-  var overlaysEnabled = true;
   var sparkleButtons = new Map(); // selector -> sparkle button element
   var activeTooltip = null;
 
@@ -108,7 +104,6 @@
         return;
       }
 
-      // Validate URL fields
       var urlTypes = ['linkedinUrl', 'website', 'videoUrl', 'pitchDeckUrl', 'twitterUrl'];
       if (urlTypes.indexOf(f.semanticType) !== -1 && actual && !looksLikeUrl(actual)) {
         errors.push({ index: f.index, label: f.label || f.placeholder || 'URL', reason: 'not_url', cleared: false });
@@ -123,79 +118,6 @@
     });
 
     return { ok: errors.length === 0, errors: errors, fixedCount: fixedCount };
-  }
-
-  /**
-   * Calculate confidence based on semantic type match
-   */
-  function calculateConfidence(field, value) {
-    if (!field.semanticType) return 'low';
-    if (!value || value.length === 0) return 'low';
-
-    // High confidence: exact semantic match
-    var highConfidenceTypes = ['email', 'phone', 'companyName', 'website', 'linkedinUrl', 'city', 'state', 'zip', 'country'];
-    if (highConfidenceTypes.indexOf(field.semanticType) !== -1) return 'high';
-
-    // Medium confidence: contextual match
-    var mediumConfidenceTypes = ['contactName', 'firstName', 'lastName', 'address', 'description', 'shortDescription'];
-    if (mediumConfidenceTypes.indexOf(field.semanticType) !== -1) return 'medium';
-
-    return 'low';
-  }
-
-  /**
-   * Request suggestions for visible fields from background
-   */
-  function requestSuggestionsForFields(visibleFields) {
-    if (!visibleFields || visibleFields.length === 0) return;
-
-    // Filter out fields we already have suggestions for or are pending
-    var fieldsToRequest = visibleFields.filter(function(f) {
-      return !cachedMappings.has(f.selector) && !pendingFieldRequests.has(f.selector);
-    });
-
-    if (fieldsToRequest.length === 0) return;
-
-    // Mark as pending
-    fieldsToRequest.forEach(function(f) {
-      pendingFieldRequests.add(f.selector);
-    });
-
-    // Request suggestions from background
-    chrome.runtime.sendMessage({
-      type: 'FORMPILOT_SUGGEST_MAPPINGS',
-      fields: fieldsToRequest,
-    }, function(response) {
-      if (!response || !response.ok) {
-        fieldsToRequest.forEach(function(f) {
-          pendingFieldRequests.delete(f.selector);
-        });
-        return;
-      }
-
-      var mappings = response.mappings || [];
-
-      // Process mappings and show overlays
-      mappings.forEach(function(m) {
-        var field = fieldsToRequest.find(function(f) { return f.index === m.index; });
-        if (!field || !m.value) return;
-
-        pendingFieldRequests.delete(field.selector);
-
-        var confidence = calculateConfidence(field, m.value);
-        cachedMappings.set(field.selector, { value: m.value, confidence: confidence });
-
-        // Show overlay if enabled
-        if (overlaysEnabled && typeof FormPilotOverlay !== 'undefined') {
-          FormPilotOverlay.showOverlay(field, m.value, confidence);
-        }
-      });
-
-      // Clear pending for fields without mappings
-      fieldsToRequest.forEach(function(f) {
-        pendingFieldRequests.delete(f.selector);
-      });
-    });
   }
 
   /**
@@ -270,13 +192,11 @@
     document.body.appendChild(tip);
     activeTooltip = tip;
 
-    // Position relative to sparkle button
     var rect = btn.getBoundingClientRect();
     tip.style.position = 'fixed';
     tip.style.top = (rect.bottom + 6) + 'px';
     tip.style.left = Math.max(8, rect.left - 40) + 'px';
 
-    // Close on click outside
     setTimeout(function() {
       function closer(e) {
         if (!tip.contains(e.target) && e.target !== btn) {
@@ -309,7 +229,6 @@
         };
       });
 
-    // Also read the target field's current value from the DOM
     var targetEl = document.querySelector(field.selector);
     var targetField = Object.assign({}, field);
     if (targetEl) targetField.value = targetEl.value || '';
@@ -365,7 +284,6 @@
     btn.style.top = (rect.top + (rect.height / 2) - 11) + 'px';
     btn.style.left = (rect.right + 4) + 'px';
 
-    // If it would go off-screen, place it inside the field on the right
     if (rect.right + 30 > window.innerWidth) {
       btn.style.left = (rect.right - 28) + 'px';
     }
@@ -386,7 +304,6 @@
     });
   }
 
-  // Reposition on scroll and resize
   var repositionTimer = null;
   function debouncedReposition() {
     if (repositionTimer) clearTimeout(repositionTimer);
@@ -396,57 +313,18 @@
   window.addEventListener('resize', debouncedReposition);
 
   /**
-   * Initialize IntersectionObserver for lazy loading
-   */
-  function initVisibilityObserver() {
-    if (visibilityObserver) return;
-
-    var debounceTimer = null;
-    var pendingVisible = [];
-
-    visibilityObserver = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        if (entry.isIntersecting && entry.target.__formpilotField) {
-          pendingVisible.push(entry.target.__formpilotField);
-        }
-      });
-
-      // Debounce to batch requests
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(function() {
-        if (pendingVisible.length > 0) {
-          requestSuggestionsForFields(pendingVisible.slice());
-          pendingVisible = [];
-        }
-      }, 150);
-    }, {
-      threshold: 0.3,
-      rootMargin: '50px'
-    });
-  }
-
-  /**
-   * Observe all detected form fields
+   * Detect form fields and place sparkle buttons. No API calls.
    */
   function observeFields() {
     var fields = getFields();
-
-    initVisibilityObserver();
-
     fields.forEach(function(f) {
-      var el = document.querySelector(f.selector);
-      if (el && !el.__formpilotField) {
-        el.__formpilotField = f;
-        visibilityObserver.observe(el);
-      }
       createSparkleForField(f);
     });
-
     return fields;
   }
 
   /**
-   * Watch for dynamically added form fields
+   * Watch for dynamically added form fields.
    */
   function initMutationObserver() {
     if (mutationObserver) return;
@@ -472,21 +350,6 @@
     });
   }
 
-  /**
-   * Get all cached suggestions
-   */
-  function getCachedSuggestions() {
-    var suggestions = [];
-    cachedMappings.forEach(function(data, selector) {
-      suggestions.push({
-        selector: selector,
-        value: data.value,
-        confidence: data.confidence
-      });
-    });
-    return suggestions;
-  }
-
   // WebMCP message handling
   var WEBMCP_PREFIX = 'FORMPILOT_WEBMCP_';
   window.addEventListener('message', function(e) {
@@ -503,17 +366,6 @@
         window.postMessage({ type: WEBMCP_PREFIX + 'RESULT', requestId: requestId, result: result }, '*');
       } catch (err) {
         window.postMessage({ type: WEBMCP_PREFIX + 'RESULT', requestId: requestId, result: { ok: false, error: String(err.message) } }, '*');
-      }
-    }
-
-    // Handle WebMCP tool calls
-    if (e.data && e.data.type === WEBMCP_PREFIX + 'GET_SUGGESTIONS') {
-      var requestId2 = e.data.requestId;
-      try {
-        var suggestions = getCachedSuggestions();
-        window.postMessage({ type: WEBMCP_PREFIX + 'GET_SUGGESTIONS_RESULT', requestId: requestId2, result: { ok: true, suggestions: suggestions } }, '*');
-      } catch (err) {
-        window.postMessage({ type: WEBMCP_PREFIX + 'GET_SUGGESTIONS_RESULT', requestId: requestId2, result: { ok: false, error: String(err.message) } }, '*');
       }
     }
 
@@ -550,21 +402,6 @@
   }
   injectWebMCPBridge();
 
-  // Listen for overlay events
-  document.addEventListener('formpilot:field-applied', function(e) {
-    var detail = e.detail;
-    if (detail && detail.selector) {
-      cachedMappings.set(detail.selector, { value: detail.value, confidence: 'applied' });
-    }
-  });
-
-  document.addEventListener('formpilot:field-denied', function(e) {
-    var detail = e.detail;
-    if (detail && detail.selector) {
-      cachedMappings.delete(detail.selector);
-    }
-  });
-
   // Chrome extension message handling
   chrome.runtime.onMessage.addListener(function(msg, _sender, sendResponse) {
     if (msg.type === 'FORMPILOT_GET_PAGE_FIELDS') {
@@ -590,20 +427,7 @@
       } catch (e) {
         sendResponse({ ok: false, error: e.message });
       }
-    } else if (msg.type === 'FORMPILOT_GET_SUGGESTIONS') {
-      try {
-        sendResponse({ ok: true, suggestions: getCachedSuggestions() });
-      } catch (e) {
-        sendResponse({ ok: false, error: e.message });
-      }
-    } else if (msg.type === 'FORMPILOT_SET_OVERLAYS_ENABLED') {
-      overlaysEnabled = msg.enabled !== false;
-      if (!overlaysEnabled && typeof FormPilotOverlay !== 'undefined') {
-        FormPilotOverlay.hideAllOverlays();
-      }
-      sendResponse({ ok: true });
     } else if (msg.type === 'FORMPILOT_SHOW_OVERLAYS') {
-      // Manually trigger overlay display for all visible fields
       observeFields();
       sendResponse({ ok: true });
     } else {
@@ -612,7 +436,7 @@
     return true;
   });
 
-  // Initialize on load
+  // Initialize on load — detect fields, place sparkle icons. Zero API calls.
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
       observeFields();
