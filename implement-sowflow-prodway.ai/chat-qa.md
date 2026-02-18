@@ -22,26 +22,26 @@ Summary of questions and answers from the planning conversation.
 
 ---
 
-## Q: Let's get the exact api shape for being able to create the sow and trigger the invoice either with mercury or stripe. Can we do this even though both services already have their own apis?
+## Q: Let's get the exact api shape for being able to create the sow and trigger the invoice with Stripe. Can we do this even though Stripe already has its own API?
 
-**A:** Yes. Mercury and Stripe having their own APIs is why you put Prodway in the middle:
+**A:** Yes. Stripe having its own API is why you put Prodway in the middle:
 
-- **OpenClaw** (or any tool) only talks to **Prodway's API** (e.g. "create SOW", "trigger invoice with provider mercury or stripe").
-- **Prodway's backend** then calls Mercury or Stripe with your credentials and business logic. Callers never see or send Mercury/Stripe keys.
+- **OpenClaw** (or any tool) only talks to **Prodway's API** (e.g. "create SOW", "trigger invoice").
+- **Prodway's backend** then calls Stripe with your credentials and business logic. Callers never see or send Stripe keys.
 
 So the "exact API shape" is for **Prodway's API**. That API would:
 
 1. **Create SOW** — `POST /api/sows` with title, client, line items, etc.; returns SOW id, status, view/edit URLs.
-2. **Trigger invoice** — `POST /api/invoices` with `provider: "mercury" | "stripe"`, optional `sowId`, customer, line items (or from SOW), optional `collectPayment`; Prodway creates the invoice in the chosen provider and returns id, status, invoice URL, payment URL.
+2. **Trigger invoice** — `POST /api/invoices` with optional `sowId`, customer, line items (or from SOW), optional `collectPayment`; Prodway creates the invoice in Stripe and returns id, status, invoice URL, payment URL.
 
 The full request/response shapes are in `api-spec.md`.
 
 ---
 
-## Q: Let's create a plan for how we need to implement this work tomorrow… save our spec file and implementation plan as well as this chat .md file with all my questions and your previous answers.
+## Q: Let's create a plan for how we need to implement this work… save our spec file and implementation plan as well as this chat .md file with all my questions and your previous answers.
 
 **A:** Created in `implement-sowflow-prodway.ai/`:
 
 - **api-spec.md** — Exact API shape (create SOW, trigger invoice, optional SOW+invoice in one step).
-- **implementation-plan.md** — Phased plan: backend API (routes, auth, Mercury/Stripe adapters), token issuance, optional OpenClaw tool; order of work for tomorrow.
+- **implementation-plan.md** — Phased plan: backend API (routes, auth, Stripe adapter), token issuance, optional OpenClaw tool.
 - **chat-qa.md** — This file: your questions and the answers above.

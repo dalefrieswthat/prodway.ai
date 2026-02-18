@@ -36,6 +36,7 @@ from anthropic import Anthropic
 from slack_bolt import App
 from slack_bolt.oauth.oauth_settings import OAuthSettings
 from slack_bolt.adapter.fastapi import SlackRequestHandler
+from slack_sdk import WebClient
 from slack_sdk.oauth.installation_store import FileInstallationStore
 from slack_sdk.oauth.state_store import FileOAuthStateStore
 
@@ -67,10 +68,6 @@ DOCUSIGN_BASE_URL = os.environ.get(
 )
 
 APP_URL = os.environ.get("APP_URL", "https://api.prodway.ai")
-
-# Mercury (direct API — not per-customer OAuth for now)
-MERCURY_API_TOKEN = os.environ.get("MERCURY_API_TOKEN", "")
-MERCURY_ACCOUNT_ID = os.environ.get("MERCURY_ACCOUNT_ID", "")
 
 # Data directories (file-based storage for MVP — upgrade to Postgres later)
 DATA_DIR = Path(os.environ.get("DATA_DIR", "./data"))
@@ -124,6 +121,8 @@ if _CLI_MODE:
     print(f"\nUsage: curl -H 'Authorization: Bearer {token}' {APP_URL}/api/sows")
     sys.exit(0)
 
+_installation_store = FileInstallationStore(base_dir=str(DATA_DIR / "installations"))
+
 bolt_app = App(
         signing_secret=SLACK_SIGNING_SECRET,
         oauth_settings=OAuthSettings(
@@ -136,15 +135,26 @@ bolt_app = App(
             ],
             install_path="/slack/install",
             redirect_uri_path="/slack/oauth_redirect",
-            installation_store=FileInstallationStore(
-                base_dir=str(DATA_DIR / "installations")
-            ),
+            installation_store=_installation_store,
             state_store=FileOAuthStateStore(
                 expiration_seconds=600,
                 base_dir=str(DATA_DIR / "states"),
             ),
         ),
     )
+
+
+def _notify_team(team_id: str, channel_id: str, text: str) -> None:
+    """Send a Slack notification to a team's channel using the stored bot token."""
+    try:
+        installation = _installation_store.find_installation(
+            enterprise_id=None, team_id=team_id
+        )
+        if installation and installation.bot_token:
+            client = WebClient(token=installation.bot_token)
+            client.chat_postMessage(channel=channel_id, text=text)
+    except Exception as e:
+        logger.error(f"Failed to notify team {team_id}: {e}")
 
 
 # ============================================================================
@@ -217,6 +227,44 @@ def load_team_integrations(team_id: str) -> dict:
     if path.exists():
         return json.loads(path.read_text())
     return {}
+
+
+def _refresh_docusign_token(team_id: str, refresh_token: str) -> dict | None:
+    """Refresh an expired DocuSign access token. Returns new token data or None."""
+    if not refresh_token or not DOCUSIGN_INTEGRATION_KEY or not DOCUSIGN_SECRET_KEY:
+        return None
+
+    token_url = f"https://{DOCUSIGN_AUTH_SERVER}/oauth/token"
+    auth_header = base64.b64encode(
+        f"{DOCUSIGN_INTEGRATION_KEY}:{DOCUSIGN_SECRET_KEY}".encode()
+    ).decode()
+
+    try:
+        with httpx.Client(timeout=30) as client:
+            resp = client.post(
+                token_url,
+                headers={
+                    "Authorization": f"Basic {auth_header}",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": refresh_token,
+                },
+            )
+            resp.raise_for_status()
+            token_data = resp.json()
+
+            save_team_integrations(team_id, {
+                "docusign_access_token": token_data["access_token"],
+                "docusign_refresh_token": token_data.get("refresh_token", refresh_token),
+                "docusign_token_refreshed_at": datetime.now().isoformat(),
+            })
+
+            return token_data
+    except Exception as e:
+        logger.error(f"DocuSign token refresh failed for team {team_id}: {e}")
+        return None
 
 
 def get_team_docusign(team_id: str) -> dict | None:
@@ -767,14 +815,18 @@ def send_docusign_envelope(
 
     try:
         with httpx.Client(timeout=30) as client:
-            resp = client.post(
-                f"{api_url}/envelopes",
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/json",
-                },
-                json=envelope,
-            )
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            }
+            resp = client.post(f"{api_url}/envelopes", headers=headers, json=envelope)
+
+            if resp.status_code == 401 and ds_creds.get("refresh_token"):
+                token_data = _refresh_docusign_token(team_id, ds_creds["refresh_token"])
+                if token_data:
+                    headers["Authorization"] = f"Bearer {token_data['access_token']}"
+                    resp = client.post(f"{api_url}/envelopes", headers=headers, json=envelope)
+
             if resp.status_code in (200, 201):
                 return resp.json()
             else:
@@ -912,10 +964,25 @@ def handle_sow_command(ack, command, respond, context):
                     "Please provide a project description.\n\n"
                     "Example: `/sow K8s migration for startup, 50k users, "
                     "need to scale to 500k, 6 week timeline`\n\n"
-                    "Or try `/sow list` to see your SOWs."
+                    "Or try `/sow list` or `/sow view [id]`."
                 ),
             }
         )
+        return
+
+    # /sow view [id] — view a specific SOW
+    if description.lower().startswith("view"):
+        parts = description.split(maxsplit=1)
+        if len(parts) < 2 or not parts[1].strip():
+            respond({"response_type": "ephemeral", "text": "Usage: `/sow view [id]`"})
+            return
+        sow_id = parts[1].strip()
+        sow = load_sow(sow_id)
+        if not sow:
+            respond({"response_type": "ephemeral", "text": f"SOW `{sow_id}` not found."})
+            return
+        blocks = format_sow_for_slack(sow, sow_id)
+        respond({"response_type": "ephemeral", "blocks": blocks})
         return
 
     # /sow list — show existing SOWs
@@ -940,10 +1007,12 @@ def handle_sow_command(ack, command, respond, context):
         for s in sows[:10]:
             icon = status_icons.get(s.get("status", "draft"), "📝")
             total = s.get("pricing", {}).get("total", 0)
+            sow_id = s.get("id", "?")
             text += (
-                f"{icon} *{s.get('title', 'Untitled')}* — "
+                f"{icon} `{sow_id}` *{s.get('title', 'Untitled')}* — "
                 f"${total:,.0f} — _{s.get('status', 'draft')}_\n"
             )
+        text += "\n_Use `/sow view [id]` to view a specific SOW._"
         respond({"response_type": "ephemeral", "text": text})
         return
 
@@ -1400,7 +1469,8 @@ def handle_app_home(client, event, context):
                 "text": (
                     "*Commands:*\n"
                     "• `/sow Need K8s migration, 50k users, 6 weeks` — Generate SOW\n"
-                    "• `/sow list` — View your SOWs\n\n"
+                    "• `/sow list` — View your SOWs\n"
+                    "• `/sow view [id]` — View a specific SOW\n\n"
                     "*How it works:*\n"
                     "1️⃣ `/sow` → AI generates a complete SOW\n"
                     "2️⃣ Review, edit, and click Send\n"
@@ -1541,7 +1611,7 @@ class Customer(BaseModel):
 
 
 class CreateInvoiceRequest(BaseModel):
-    provider: str  # "mercury" or "stripe"
+    provider: str = "stripe"
     sowId: str | None = None
     customerId: str | None = None
     customer: Customer | None = None
@@ -1567,83 +1637,6 @@ class CreateSowWithInvoiceRequest(BaseModel):
     expiresAt: str | None = None
     metadata: dict | None = None
     invoice: InvoiceConfig
-
-
-# ============================================================================
-# MERCURY INVOICE ADAPTER
-# ============================================================================
-
-
-async def create_mercury_invoice(
-    line_items: list[dict],
-    customer: dict,
-    due_date: str | None = None,
-    collect_payment: bool = False,
-    metadata: dict | None = None,
-) -> dict:
-    """Create an invoice via Mercury API."""
-    if not MERCURY_API_TOKEN:
-        raise HTTPException(status_code=503, detail="Mercury not configured")
-
-    total_cents = sum(
-        item.get("unitAmountCents", 0) * item.get("quantity", 1)
-        for item in line_items
-    )
-
-    invoice_payload = {
-        "recipientEmail": customer.get("email"),
-        "recipientName": customer.get("name"),
-        "amount": total_cents / 100,
-        "currency": "USD",
-        "description": "; ".join(item.get("description", "") for item in line_items),
-    }
-
-    if due_date:
-        invoice_payload["dueDate"] = due_date
-
-    headers = {
-        "Authorization": f"Bearer {MERCURY_API_TOKEN}",
-        "Content-Type": "application/json",
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            url = f"https://api.mercury.com/api/v1/account/{MERCURY_ACCOUNT_ID}/invoices"
-            resp = await client.post(url, headers=headers, json=invoice_payload)
-
-            if resp.status_code >= 400:
-                error_body = resp.text
-                logger.error("Mercury API error %s: %s", resp.status_code, error_body)
-                raise HTTPException(
-                    status_code=422,
-                    detail={
-                        "error": "mercury_error",
-                        "message": "Mercury invoice creation failed",
-                        "providerError": error_body,
-                    },
-                )
-
-            data = resp.json()
-            invoice_id = data.get("id", f"merc_{uuid.uuid4().hex[:8]}")
-
-            return {
-                "id": invoice_id,
-                "provider": "mercury",
-                "status": data.get("status", "draft"),
-                "totalCents": total_cents,
-                "currency": "usd",
-                "createdAt": datetime.now().isoformat(),
-                "invoiceUrl": data.get("invoiceUrl", ""),
-                "paymentUrl": data.get("paymentUrl", "") if collect_payment else None,
-            }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Mercury invoice creation failed")
-        raise HTTPException(
-            status_code=502,
-            detail={"error": "mercury_error", "message": str(e)},
-        )
 
 
 # ============================================================================
@@ -1821,11 +1814,11 @@ async def api_create_sow(body: CreateSowRequest, auth: dict = Depends(require_ap
 
 @api.post("/api/invoices")
 async def api_create_invoice(body: CreateInvoiceRequest, auth: dict = Depends(require_api_auth)):
-    """Create an invoice via Mercury or Stripe. Returns invoice ID, status, URLs."""
+    """Create a Stripe invoice. Returns invoice ID, status, URLs."""
     workspace_id = auth.get("workspace_id", "api")
 
-    if body.provider not in ("mercury", "stripe"):
-        raise HTTPException(status_code=400, detail='provider must be "mercury" or "stripe"')
+    if body.provider != "stripe":
+        raise HTTPException(status_code=400, detail='Only "stripe" provider is currently supported')
 
     # Resolve line items from SOW or request body
     line_items = []
@@ -1867,25 +1860,15 @@ async def api_create_invoice(body: CreateInvoiceRequest, auth: dict = Depends(re
     if not customer_data.get("email") and not body.customerId:
         raise HTTPException(status_code=400, detail="customer.email or customerId required")
 
-    # Create invoice with provider
-    if body.provider == "mercury":
-        result = await create_mercury_invoice(
-            line_items=line_items,
-            customer=customer_data,
-            due_date=body.dueDate,
-            collect_payment=body.collectPayment,
-            metadata=body.metadata,
-        )
-    else:
-        result = await create_stripe_invoice_api(
-            line_items=line_items,
-            customer_data=customer_data,
-            customer_id=body.customerId,
-            workspace_id=workspace_id,
-            due_date=body.dueDate,
-            collect_payment=body.collectPayment,
-            metadata=body.metadata,
-        )
+    result = await create_stripe_invoice_api(
+        line_items=line_items,
+        customer_data=customer_data,
+        customer_id=body.customerId,
+        workspace_id=workspace_id,
+        due_date=body.dueDate,
+        collect_payment=body.collectPayment,
+        metadata=body.metadata,
+    )
 
     result["sowId"] = sow_id
 
@@ -2218,33 +2201,49 @@ async def connect_stripe_callback(code: str = "", state: str = ""):
 @api.post("/webhooks/docusign")
 async def docusign_webhook(req: Request):
     """
-    DocuSign Connect webhook — when a SOW is signed, automatically
-    create a Stripe invoice on the customer's connected account.
+    DocuSign Connect webhook — track envelope lifecycle and notify in Slack.
+    On signature, automatically creates a Stripe invoice.
     """
     body = await req.json()
 
-    # DocuSign sends envelope status changes
     status = body.get("status", "")
     envelope_id = body.get("envelopeId", "")
 
-    if status != "completed":
+    if status not in ("sent", "delivered", "completed", "declined", "voided"):
         return {"status": "ignored", "reason": f"status={status}"}
 
-    logger.info(f"DocuSign envelope completed: {envelope_id}")
+    logger.info(f"DocuSign envelope {status}: {envelope_id}")
 
-    # Find the SOW with this envelope ID
     for f in (DATA_DIR / "sows").glob("*.json"):
         try:
             sow = json.loads(f.read_text())
-            if sow.get("docusign_envelope_id") == envelope_id:
-                team_id = sow.get("_team_id", "")
+            if sow.get("docusign_envelope_id") != envelope_id:
+                continue
 
-                # Update SOW status
+            team_id = sow.get("_team_id", "")
+            channel_id = sow.get("_channel_id", "")
+            title = sow.get("title", "Untitled SOW")
+
+            if status == "delivered":
+                sow["viewed_at"] = datetime.now().isoformat()
+                save_sow(sow["id"], sow)
+                if channel_id:
+                    _notify_team(
+                        team_id, channel_id,
+                        f"👀 *{title}* was viewed by the client."
+                    )
+
+            elif status == "completed":
                 sow["status"] = "signed"
                 sow["signed_at"] = datetime.now().isoformat()
                 save_sow(sow["id"], sow)
 
-                # AUTO-INVOICE: Create Stripe invoice on customer's account
+                if channel_id:
+                    _notify_team(
+                        team_id, channel_id,
+                        f"✅ *{title}* has been signed!"
+                    )
+
                 if get_team_stripe(team_id) and sow.get("client_email"):
                     inv = create_stripe_invoice(
                         sow,
@@ -2256,27 +2255,35 @@ async def docusign_webhook(req: Request):
                         sow["stripe_invoice_id"] = inv["invoice_id"]
                         sow["status"] = "invoiced"
                         save_sow(sow["id"], sow)
-                        logger.info(
-                            f"Auto-invoiced SOW {sow['id']}: {inv['invoice_url']}"
-                        )
+                        logger.info(f"Auto-invoiced SOW {sow['id']}: {inv['invoice_url']}")
+                        if channel_id:
+                            _notify_team(
+                                team_id, channel_id,
+                                f"💰 Invoice sent for *{title}* — {inv.get('invoice_url', '')}"
+                            )
 
-                # DATA MOAT: Record outcome timing
                 try:
-                    created = datetime.fromisoformat(sow.get("created_at", ""))
                     sent = datetime.fromisoformat(sow.get("sent_at", ""))
                     signed = datetime.now()
                     save_outcome(
                         sow["id"], team_id, "won",
                         final_value=sow.get("pricing", {}).get("total", 0),
                         time_to_send_ms=sow.get("_time_to_send_ms", 0),
-                        time_to_sign_ms=int(
-                            (signed - sent).total_seconds() * 1000
-                        ),
+                        time_to_sign_ms=int((signed - sent).total_seconds() * 1000),
                     )
                 except Exception:
                     pass
 
-                break
+            elif status in ("declined", "voided"):
+                sow["status"] = "rejected"
+                save_sow(sow["id"], sow)
+                if channel_id:
+                    _notify_team(
+                        team_id, channel_id,
+                        f"❌ *{title}* was {status} by the client."
+                    )
+
+            break
         except Exception:
             continue
 

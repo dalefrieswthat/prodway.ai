@@ -192,7 +192,38 @@ chrome.storage.onChanged.addListener((changes) => {
   }
 });
 
+async function suggestSingleField(field, nearbyFields) {
+  const profile = await getCompanyProfile();
+  const context = await getCompanyContext();
+  const base = await getApiBaseUrl();
+  const url = `${base}/formpilot/suggest-field`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        field,
+        nearby_fields: nearbyFields || [],
+        profile: profile || {},
+        context: context || '',
+      }),
+    });
+    if (!res.ok) return { value: null, reasoning: 'API error' };
+    return await res.json();
+  } catch {
+    return { value: null, reasoning: 'Network error' };
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'FORMPILOT_SUGGEST_FIELD') {
+    (async () => {
+      const result = await suggestSingleField(msg.field, msg.nearbyFields);
+      sendResponse({ ok: true, value: result.value, reasoning: result.reasoning });
+    })();
+    return true;
+  }
+
   if (msg.type !== 'FORMPILOT_SUGGEST_MAPPINGS') return false;
   (async () => {
     const profile = await getCompanyProfile();

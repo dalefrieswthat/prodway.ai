@@ -1,6 +1,6 @@
-# Prodway API spec: SOW + invoice (Mercury / Stripe)
+# Prodway API spec: SOW + invoice (Stripe)
 
-API that Prodway exposes so tools like OpenClaw can create SOWs and trigger invoices. Prodway backend calls Mercury/Stripe; callers never touch provider APIs directly.
+API that Prodway exposes so tools like OpenClaw can create SOWs and trigger invoices. Prodway backend calls Stripe; callers never touch provider APIs directly.
 
 **Auth:** `Authorization: Bearer <token>` (API key or OAuth2 access token per workspace).
 
@@ -60,7 +60,7 @@ Body: `{ "error": "code", "message": "..." }`
 
 ---
 
-## 2. Trigger invoice (Mercury or Stripe)
+## 2. Trigger invoice (Stripe)
 
 **Endpoint:** `POST /api/invoices`
 
@@ -68,7 +68,7 @@ Body: `{ "error": "code", "message": "..." }`
 
 | Field | Type | Required | Notes |
 |-------|------|----------|--------|
-| `provider` | string | Yes | `"mercury"` or `"stripe"` |
+| `provider` | string | No | Defaults to `"stripe"` |
 | `sowId` | string | No | If set, line items can be sourced from SOW |
 | `customerId` | string | No | Provider-specific customer id if already exists |
 | `customer` | object | Yes if no customerId | See customer shape below |
@@ -97,7 +97,7 @@ Body: `{ "error": "code", "message": "..." }`
 ```json
 {
   "id": "inv_xyz789",
-  "provider": "mercury",
+  "provider": "stripe",
   "status": "draft",
   "sowId": "sow_abc123",
   "totalCents": 10000,
@@ -127,7 +127,7 @@ All fields from Create SOW, plus:
 | Field | Type | Required | Notes |
 |-------|------|----------|--------|
 | `invoice` | object | Yes | |
-| `invoice.provider` | string | Yes | `"mercury"` or `"stripe"` |
+| `invoice.provider` | string | No | Defaults to `"stripe"` |
 | `invoice.dueDate` | string | No | ISO date |
 | `invoice.collectPayment` | boolean | No | Default false |
 
@@ -142,7 +142,7 @@ All fields from Create SOW, plus:
 
 ---
 
-## 4. Using Mercury and Stripe
+## 4. Using Stripe
 
-- Callers only call this Prodway API; they never use Mercury or Stripe APIs directly.
-- Prodway backend stores Mercury/Stripe credentials per workspace and calls the provider API when `provider` is `"mercury"` or `"stripe"`.
+- Callers only call this Prodway API; they never use Stripe APIs directly.
+- Prodway backend stores Stripe credentials per workspace and calls the Stripe API.

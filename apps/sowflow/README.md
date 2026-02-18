@@ -1,6 +1,6 @@
 # SowFlow - AI-Powered SOW Generation
 
-Generate Statements of Work from a single Slack command.
+Generate Statements of Work from a single Slack command. Full deal flow: AI scope → DocuSign e-signature → Stripe invoicing.
 
 ## Quick Start
 
@@ -17,38 +17,51 @@ Generate Statements of Work from a single Slack command.
 - `commands`
 - `users:read`
 
+**OAuth & Permissions** → Add Redirect URL:
+- `https://your-domain.com/slack/oauth_redirect`
+
 **Slash Commands** → Create:
 - Command: `/sow`
-- Request URL: (will use Socket Mode, so leave blank)
+- Request URL: `https://your-domain.com/slack/events`
 - Description: "Generate a Statement of Work"
 - Usage Hint: "[project description]"
 
-**Socket Mode** → Enable:
-- Toggle on "Enable Socket Mode"
-- Generate an App-Level Token with `connections:write` scope
-- Save this as `SLACK_APP_TOKEN`
+**Event Subscriptions** → Enable:
+- Request URL: `https://your-domain.com/slack/events`
+- Subscribe to bot events: `app_home_opened`
 
-**Install App**:
-- Go to "Install App" and install to your workspace
-- Copy the "Bot User OAuth Token" as `SLACK_BOT_TOKEN`
+**Interactivity** → Enable:
+- Request URL: `https://your-domain.com/slack/events`
 
 ### 3. Set Environment Variables
 
+Copy `ENV_TEMPLATE.txt` to `.env` and fill in:
+
 ```bash
-export SLACK_BOT_TOKEN="xoxb-your-bot-token"
-export SLACK_APP_TOKEN="xapp-your-app-token"
-export ANTHROPIC_API_KEY="sk-ant-your-key"
+# Required
+ANTHROPIC_API_KEY=sk-ant-your-key
+SLACK_CLIENT_ID=your-client-id
+SLACK_CLIENT_SECRET=your-client-secret
+SLACK_SIGNING_SECRET=your-signing-secret
+APP_URL=https://your-domain.com
+
+# Optional (for full deal flow)
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_CLIENT_ID=ca_...
+DOCUSIGN_INTEGRATION_KEY=...
+DOCUSIGN_SECRET_KEY=...
 ```
 
-### 4. Run the Bot
+### 4. Run
 
 ```bash
 cd apps/sowflow
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python main.py
+python main.py  # Starts on port 3000
 ```
 
-### 5. Use It!
+### 5. Use It
 
 In any Slack channel:
 
@@ -57,17 +70,37 @@ In any Slack channel:
 need to scale to 500k. Timeline: 6 weeks.
 ```
 
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/sow [description]` | Generate a new SOW |
+| `/sow list` | View your recent SOWs |
+| `/sow view [id]` | View a specific SOW |
+
 ## Features
 
-- **AI-Powered Scoping**: Claude analyzes your description and generates appropriate scope
-- **Smart Pricing**: Suggests pricing based on complexity
-- **One-Click Actions**: Send, Edit, or Dismiss the generated SOW
-- **Slack-Native**: Works right in your existing workflow
+- **AI-Powered Scoping**: Claude analyzes your description and generates scope, deliverables, timeline, pricing
+- **Smart Pricing**: Suggests pricing based on complexity ($5K–$75K+)
+- **DocuSign Integration**: Send SOWs for e-signature via customer's own DocuSign
+- **Stripe Invoicing**: Auto-generate invoices on signature via Stripe Connect
+- **Data Moat**: Every edit teaches the AI to generate better SOWs
+- **Multi-Tenant**: Any Slack workspace can install via OAuth
 
-## Coming Soon
+## Architecture
 
-- [ ] DocuSign integration for e-signatures
-- [ ] Stripe integration for invoicing
-- [ ] Template customization
-- [ ] SOW history and analytics
-- [ ] Team collaboration
+- **OAuth Multi-Tenant**: Workspaces install via `/slack/install` — no bot tokens needed
+- **Per-Customer Integrations**: Each team connects their own DocuSign + Stripe accounts
+- **File-Based Storage**: JSON persistence in `./data/` (Postgres migration planned)
+- **Auto-Invoice on Signature**: DocuSign webhook triggers Stripe invoice creation
+
+## Deployment
+
+```bash
+# Docker
+docker build -t sowflow .
+docker run -p 3000:3000 --env-file .env sowflow
+
+# Railway
+railway up
+```
