@@ -31,7 +31,10 @@ import httpx
 from fastapi import FastAPI, Request, Response, Depends, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
+import time as _time
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
 from anthropic import Anthropic
 from slack_bolt import App
 from slack_bolt.oauth.oauth_settings import OAuthSettings
@@ -288,6 +291,35 @@ def get_team_stripe(team_id: str) -> str | None:
     return integrations.get("stripe_account_id")
 
 
+def get_team_ai_config(team_id: str) -> dict | None:
+    """Get a team's AI provider config, or None if not configured."""
+    integrations = load_team_integrations(team_id)
+    ai = integrations.get("ai_provider")
+    if isinstance(ai, dict) and ai.get("api_key"):
+        return ai
+    return None
+
+
+_team_ai_clients: dict[str, tuple[Anthropic, float]] = {}
+_AI_CLIENT_TTL = 300  # 5 min — refresh if team rotates their key
+
+
+def _resolve_ai_client(team_id: str = "") -> Anthropic:
+    """Resolve AI client: team key > platform key > error."""
+    if team_id:
+        config = get_team_ai_config(team_id)
+        if config and config.get("provider", "anthropic") == "anthropic" and config.get("api_key"):
+            cached = _team_ai_clients.get(team_id)
+            if cached and (_time.monotonic() - cached[1]) < _AI_CLIENT_TTL:
+                return cached[0]
+            client = Anthropic(api_key=config["api_key"])
+            _team_ai_clients[team_id] = (client, _time.monotonic())
+            return client
+    if claude:
+        return claude
+    raise ValueError("No AI key configured — add yours with /sow config ai-key")
+
+
 def save_edit(sow_id: str, team_id: str, edited_by: str,
               field_name: str, old_value: str, new_value: str) -> None:
     """Record an edit — every edit is a training signal for improving AI output."""
@@ -413,13 +445,10 @@ def generate_sow(description: str, team_id: str = "") -> tuple[dict, object, int
     Returns: (sow_dict, raw_response, generation_time_ms)
     The raw response and timing are used for data moat tracking.
     """
-    import time
+    ai_client = _resolve_ai_client(team_id)
 
-    if not claude:
-        raise ValueError("Anthropic API key not configured")
-
-    start = time.monotonic()
-    response = claude.messages.create(
+    start = _time.monotonic()
+    response = ai_client.messages.create(
         model="claude-sonnet-4-20250514",
         max_tokens=2000,
         system=SOW_SYSTEM_PROMPT,
@@ -430,7 +459,7 @@ def generate_sow(description: str, team_id: str = "") -> tuple[dict, object, int
             }
         ],
     )
-    generation_time_ms = int((time.monotonic() - start) * 1000)
+    generation_time_ms = int((_time.monotonic() - start) * 1000)
 
     content = response.content[0].text
 
@@ -596,7 +625,29 @@ def format_sow_for_slack(sow: dict, sow_id: str) -> list:
 # ============================================================================
 
 
-def generate_sow_html(sow: dict, client_name: str, company_name: str) -> str:
+def _render_signature_blocks(signers: list[dict]) -> str:
+    """Render HTML signature blocks for N signers with DocuSign anchor strings."""
+    if not signers:
+        signers = [{"role": "Client"}, {"role": "Provider"}]
+    blocks = []
+    for i, signer in enumerate(signers, 1):
+        role = signer.get("role", "Signer").title()
+        blocks.append(
+            f'    <div class="signature-box">\n'
+            f"      <p><strong>{role}</strong></p>\n"
+            f"      <p>[SIGNER_{i}_SIGNATURE]</p>\n"
+            f'      <p class="signature-line">Signature</p>\n'
+            f"      <p>[SIGNER_{i}_DATE]</p>\n"
+            f'      <p class="signature-line">Date</p>\n'
+            f"    </div>"
+        )
+    return f'  <div class="signature-block">\n' + "\n".join(blocks) + "\n  </div>"
+
+
+def generate_sow_html(
+    sow: dict, client_name: str, company_name: str,
+    signers: list[dict] | None = None,
+) -> str:
     """Generate a professional HTML SOW document for DocuSign."""
     pricing = sow.get("pricing", {})
     total = pricing.get("total", 0)
@@ -621,6 +672,11 @@ def generate_sow_html(sow: dict, client_name: str, company_name: str) -> str:
     exclusions_html = "\n".join(
         f"<li>{item}</li>" for item in sow.get("exclusions", [])
     )
+
+    sig_list = signers or sow.get("signers") or [
+        {"role": "Client"}, {"role": "Provider"}
+    ]
+    signature_html = _render_signature_blocks(sig_list)
 
     return f"""<!DOCTYPE html>
 <html>
@@ -682,106 +738,79 @@ def generate_sow_html(sow: dict, client_name: str, company_name: str) -> str:
     <li>Either party may terminate with 14 days written notice.</li>
   </ul>
 
-  <div class="signature-block">
-    <div class="signature-box">
-      <p><strong>Client</strong></p>
-      <p>[CLIENT_SIGNATURE]</p>
-      <p class="signature-line">Signature</p>
-      <p>[CLIENT_DATE]</p>
-      <p class="signature-line">Date</p>
-    </div>
-    <div class="signature-box">
-      <p><strong>Provider</strong></p>
-      <p>[PROVIDER_SIGNATURE]</p>
-      <p class="signature-line">Signature</p>
-      <p>[PROVIDER_DATE]</p>
-      <p class="signature-line">Date</p>
-    </div>
-  </div>
+  {signature_html}
 </body>
 </html>"""
 
 
-def _docusign_signers(client_email: str, client_name: str, ds_creds: dict) -> list[dict]:
-    """Build signers list: client first (routingOrder 1), then provider (routingOrder 2) if we have their email."""
-    signers = [
-        {
-            "email": client_email,
-            "name": client_name,
-            "recipientId": "1",
-            "routingOrder": "1",
+def _docusign_signers(
+    signers: list[dict] | None = None,
+    ds_creds: dict | None = None,
+    client_email: str = "",
+    client_name: str = "",
+) -> list[dict]:
+    """Build DocuSign recipients from a signer list with dynamic anchors.
+
+    Falls back to legacy client + provider behavior when no signers list is provided.
+    """
+    if not signers and client_email:
+        signers = [{"name": client_name, "email": client_email, "role": "client", "routing_order": 1}]
+        if ds_creds:
+            provider_email = (ds_creds.get("provider_email") or "").strip()
+            if provider_email:
+                provider_name = (ds_creds.get("provider_name") or "Provider").strip() or "Provider"
+                signers.append({
+                    "name": provider_name,
+                    "email": provider_email,
+                    "role": "provider",
+                    "routing_order": 2,
+                })
+
+    recipients = []
+    for i, signer in enumerate(signers or [], 1):
+        recipients.append({
+            "email": signer["email"],
+            "name": signer["name"],
+            "recipientId": str(i),
+            "routingOrder": str(signer.get("routing_order", i)),
             "tabs": {
-                "signHereTabs": [
-                    {
-                        "documentId": "1",
-                        "pageNumber": "1",
-                        "anchorString": "[CLIENT_SIGNATURE]",
-                        "anchorUnits": "pixels",
-                        "anchorXOffset": "0",
-                        "anchorYOffset": "0",
-                    }
-                ],
-                "dateSignedTabs": [
-                    {
-                        "documentId": "1",
-                        "pageNumber": "1",
-                        "anchorString": "[CLIENT_DATE]",
-                        "anchorUnits": "pixels",
-                        "anchorXOffset": "0",
-                        "anchorYOffset": "0",
-                    }
-                ],
-            },
-        },
-    ]
-    provider_email = (ds_creds.get("provider_email") or "").strip()
-    provider_name = (ds_creds.get("provider_name") or "Provider").strip() or "Provider"
-    if provider_email:
-        signers.append({
-            "email": provider_email,
-            "name": provider_name,
-            "recipientId": "2",
-            "routingOrder": "2",
-            "tabs": {
-                "signHereTabs": [
-                    {
-                        "documentId": "1",
-                        "pageNumber": "1",
-                        "anchorString": "[PROVIDER_SIGNATURE]",
-                        "anchorUnits": "pixels",
-                        "anchorXOffset": "0",
-                        "anchorYOffset": "0",
-                    }
-                ],
-                "dateSignedTabs": [
-                    {
-                        "documentId": "1",
-                        "pageNumber": "1",
-                        "anchorString": "[PROVIDER_DATE]",
-                        "anchorUnits": "pixels",
-                        "anchorXOffset": "0",
-                        "anchorYOffset": "0",
-                    }
-                ],
+                "signHereTabs": [{
+                    "documentId": "1",
+                    "pageNumber": "1",
+                    "anchorString": f"[SIGNER_{i}_SIGNATURE]",
+                    "anchorUnits": "pixels",
+                    "anchorXOffset": "0",
+                    "anchorYOffset": "0",
+                }],
+                "dateSignedTabs": [{
+                    "documentId": "1",
+                    "pageNumber": "1",
+                    "anchorString": f"[SIGNER_{i}_DATE]",
+                    "anchorUnits": "pixels",
+                    "anchorXOffset": "0",
+                    "anchorYOffset": "0",
+                }],
             },
         })
-    return signers
+    return recipients
 
 
 def send_docusign_envelope(
-    sow: dict, client_email: str, client_name: str, company_name: str,
-    team_id: str = "",
+    sow: dict, client_email: str = "", client_name: str = "",
+    company_name: str = "", team_id: str = "",
+    signers: list[dict] | None = None,
 ) -> dict | None:
     """
     Send SOW via the CUSTOMER's DocuSign account for e-signature.
     Each team connects their own DocuSign via OAuth.
-    Client signs first (routingOrder 1), then provider (routingOrder 2).
+    Accepts an optional signers list for per-document signer configuration.
     """
     ds_creds = get_team_docusign(team_id) if team_id else None
     if not ds_creds:
         return None
 
-    html_content = generate_sow_html(sow, client_name, company_name)
+    signer_list = signers or sow.get("signers")
+    html_content = generate_sow_html(sow, client_name, company_name, signers=signer_list)
     doc_base64 = base64.b64encode(html_content.encode()).decode()
 
     envelope = {
@@ -800,7 +829,12 @@ def send_docusign_envelope(
             }
         ],
         "recipients": {
-            "signers": _docusign_signers(client_email, client_name, ds_creds),
+            "signers": _docusign_signers(
+                signers=signer_list,
+                ds_creds=ds_creds,
+                client_email=client_email,
+                client_name=client_name,
+            ),
         },
     }
 
@@ -970,6 +1004,47 @@ def handle_sow_command(ack, command, respond, context):
         )
         return
 
+    # /sow config ai-key <key> — save team's Anthropic API key (BYOK)
+    if description.lower().startswith("config ai-key"):
+        parts = description.split(maxsplit=2)
+        key_value = parts[2].strip() if len(parts) > 2 else ""
+        if not key_value or not key_value.startswith("sk-"):
+            respond({
+                "response_type": "ephemeral",
+                "text": (
+                    "Usage: `/sow config ai-key sk-ant-...`\n"
+                    "Get your key at <https://console.anthropic.com|console.anthropic.com>"
+                ),
+            })
+            return
+        try:
+            test_client = Anthropic(api_key=key_value)
+            test_client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=1,
+                messages=[{"role": "user", "content": "hi"}],
+            )
+        except Exception:
+            respond({
+                "response_type": "ephemeral",
+                "text": "Invalid API key. Please check it and try again.",
+            })
+            return
+        save_team_integrations(team_id, {
+            "ai_provider": {
+                "provider": "anthropic",
+                "api_key": key_value,
+                "configured_at": datetime.now().isoformat(),
+                "configured_by": command.get("user_id"),
+            },
+        })
+        _team_ai_clients.pop(team_id, None)
+        respond({
+            "response_type": "ephemeral",
+            "text": "Anthropic API key configured. Your team's SOW generation will now use your own key.",
+        })
+        return
+
     # /sow view [id] — view a specific SOW
     if description.lower().startswith("view"):
         parts = description.split(maxsplit=1)
@@ -1062,69 +1137,63 @@ def handle_sow_command(ack, command, respond, context):
         )
 
 
-@bolt_app.action("send_sow")
-def handle_send_sow(ack, body, client, context):
-    """Open modal to collect client details before sending."""
-    ack()
-    sow_id = body["actions"][0]["value"]
-    team_id = context.get("team_id", body.get("team", {}).get("id", ""))
+SIGNER_ROLES = [
+    {"text": {"type": "plain_text", "text": "Client"}, "value": "client"},
+    {"text": {"type": "plain_text", "text": "Provider"}, "value": "provider"},
+    {"text": {"type": "plain_text", "text": "Witness"}, "value": "witness"},
+    {"text": {"type": "plain_text", "text": "Approver"}, "value": "approver"},
+]
+MAX_SIGNERS = 5
 
-    # Check what THIS TEAM has connected (per-customer integrations)
+
+def _build_signer_blocks(n: int) -> list[dict]:
+    """Build Slack modal input blocks for N signers."""
+    blocks = []
+    for i in range(1, n + 1):
+        label_prefix = "Signer" if n > 1 else "Client"
+        blocks.extend([
+            {
+                "type": "input",
+                "block_id": f"signer_{i}_email",
+                "element": {
+                    "type": "email_text_input",
+                    "action_id": "email_input",
+                    "placeholder": {"type": "plain_text", "text": "signer@company.com"},
+                },
+                "label": {"type": "plain_text", "text": f"{label_prefix} {i} Email" if n > 1 else "Client Email"},
+            },
+            {
+                "type": "input",
+                "block_id": f"signer_{i}_name",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "name_input",
+                    "placeholder": {"type": "plain_text", "text": "John Smith"},
+                },
+                "label": {"type": "plain_text", "text": f"{label_prefix} {i} Name" if n > 1 else "Client Name"},
+            },
+            {
+                "type": "input",
+                "block_id": f"signer_{i}_role",
+                "element": {
+                    "type": "static_select",
+                    "action_id": "role_input",
+                    "options": SIGNER_ROLES,
+                    "initial_option": SIGNER_ROLES[0] if i == 1 else SIGNER_ROLES[1],
+                },
+                "label": {"type": "plain_text", "text": f"{label_prefix} {i} Role" if n > 1 else "Role"},
+                "optional": True,
+            },
+        ])
+    return blocks
+
+
+def _build_send_modal(sow_id: str, team_id: str, signer_count: int = 1) -> dict:
+    """Build the complete Send SOW modal view."""
     team_docusign = get_team_docusign(team_id)
     team_stripe = get_team_stripe(team_id)
 
-    send_options = []
-    if team_docusign:
-        send_options.append(
-            {
-                "text": {
-                    "type": "plain_text",
-                    "text": "📝 Send via DocuSign for e-signature",
-                },
-                "value": "docusign",
-            }
-        )
-    if team_stripe:
-        send_options.append(
-            {
-                "text": {
-                    "type": "plain_text",
-                    "text": "💳 Include Stripe payment link",
-                },
-                "value": "stripe_link",
-            }
-        )
-        send_options.append(
-            {
-                "text": {"type": "plain_text", "text": "🧾 Send Stripe invoice"},
-                "value": "stripe_invoice",
-            }
-        )
-
     modal_blocks = [
-        {
-            "type": "input",
-            "block_id": "client_email",
-            "element": {
-                "type": "email_text_input",
-                "action_id": "email_input",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "client@company.com",
-                },
-            },
-            "label": {"type": "plain_text", "text": "Client Email"},
-        },
-        {
-            "type": "input",
-            "block_id": "client_name",
-            "element": {
-                "type": "plain_text_input",
-                "action_id": "name_input",
-                "placeholder": {"type": "plain_text", "text": "John Smith"},
-            },
-            "label": {"type": "plain_text", "text": "Client Name"},
-        },
         {
             "type": "input",
             "block_id": "company_name",
@@ -1135,68 +1204,151 @@ def handle_send_sow(ack, body, client, context):
             },
             "label": {"type": "plain_text", "text": "Company Name"},
         },
+        {"type": "divider"},
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": f"*Signers* ({signer_count} of {MAX_SIGNERS})"},
+        },
     ]
 
-    # Only show integration options if at least one is configured
+    modal_blocks.extend(_build_signer_blocks(signer_count))
+
+    if signer_count < MAX_SIGNERS:
+        modal_blocks.append({
+            "type": "actions",
+            "block_id": "add_signer_actions",
+            "elements": [{
+                "type": "button",
+                "text": {"type": "plain_text", "text": "+ Add Signer"},
+                "action_id": "add_signer_row",
+                "value": sow_id,
+            }],
+        })
+
+    modal_blocks.append({"type": "divider"})
+
+    send_options = []
+    if team_docusign:
+        send_options.append({
+            "text": {"type": "plain_text", "text": "Send via DocuSign for e-signature"},
+            "value": "docusign",
+        })
+    if team_stripe:
+        send_options.append({
+            "text": {"type": "plain_text", "text": "Include Stripe payment link"},
+            "value": "stripe_link",
+        })
+        send_options.append({
+            "text": {"type": "plain_text", "text": "Send Stripe invoice"},
+            "value": "stripe_invoice",
+        })
+
     if send_options:
-        modal_blocks.append(
-            {
-                "type": "input",
-                "block_id": "send_options",
-                "element": {
-                    "type": "checkboxes",
-                    "action_id": "options_input",
-                    "options": send_options,
-                    # Pre-select all configured options
-                    "initial_options": send_options,
-                },
-                "label": {"type": "plain_text", "text": "Send Options"},
-                "optional": True,
-            }
-        )
+        modal_blocks.append({
+            "type": "input",
+            "block_id": "send_options",
+            "element": {
+                "type": "checkboxes",
+                "action_id": "options_input",
+                "options": send_options,
+                "initial_options": send_options,
+            },
+            "label": {"type": "plain_text", "text": "Send Options"},
+            "optional": True,
+        })
     else:
-        modal_blocks.append(
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": (
-                        "_💡 Connect your DocuSign and Stripe accounts to enable "
-                        "e-signatures and invoicing._\n"
-                        f"<{APP_URL}/connect/docusign?team_id={team_id}|Connect DocuSign> · "
-                        f"<{APP_URL}/connect/stripe?team_id={team_id}|Connect Stripe>"
-                    ),
-                },
-            }
-        )
+        modal_blocks.append({
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": (
+                    "_Connect your DocuSign and Stripe accounts to enable "
+                    "e-signatures and invoicing._\n"
+                    f"<{APP_URL}/connect/docusign?team_id={team_id}|Connect DocuSign> · "
+                    f"<{APP_URL}/connect/stripe?team_id={team_id}|Connect Stripe>"
+                ),
+            },
+        })
+
+    metadata = json.dumps({"sow_id": sow_id, "signer_count": signer_count})
+
+    return {
+        "type": "modal",
+        "callback_id": "send_sow_modal",
+        "private_metadata": metadata,
+        "title": {"type": "plain_text", "text": "Send SOW to Client"},
+        "submit": {"type": "plain_text", "text": "Send"},
+        "blocks": modal_blocks,
+    }
+
+
+@bolt_app.action("send_sow")
+def handle_send_sow(ack, body, client, context):
+    """Open modal to collect client details and signers before sending."""
+    ack()
+    sow_id = body["actions"][0]["value"]
+    team_id = context.get("team_id", body.get("team", {}).get("id", ""))
 
     client.views_open(
         trigger_id=body["trigger_id"],
-        view={
-            "type": "modal",
-            "callback_id": "send_sow_modal",
-            "private_metadata": sow_id,
-            "title": {"type": "plain_text", "text": "Send SOW to Client"},
-            "submit": {"type": "plain_text", "text": "Send"},
-            "blocks": modal_blocks,
-        },
+        view=_build_send_modal(sow_id, team_id, signer_count=1),
+    )
+
+
+@bolt_app.action("add_signer_row")
+def handle_add_signer(ack, body, client):
+    """Add another signer row to the Send SOW modal."""
+    ack()
+    view = body["view"]
+    meta = json.loads(view.get("private_metadata", "{}"))
+    sow_id = meta.get("sow_id", "")
+    current_count = meta.get("signer_count", 1)
+    team_id = body.get("team", {}).get("id", "")
+
+    new_count = min(current_count + 1, MAX_SIGNERS)
+
+    client.views_update(
+        view_id=view["id"],
+        view=_build_send_modal(sow_id, team_id, signer_count=new_count),
     )
 
 
 @bolt_app.view("send_sow_modal")
 def handle_send_sow_submit(ack, body, client, view):
-    """Process the send modal — triggers DocuSign + Stripe."""
+    """Process the send modal — triggers DocuSign + Stripe with per-document signers."""
     ack()
 
-    sow_id = view["private_metadata"]
+    meta = json.loads(view.get("private_metadata", "{}"))
+    sow_id = meta.get("sow_id") or view.get("private_metadata", "")
+    signer_count = meta.get("signer_count", 1)
+
     sow = load_sow(sow_id)
     if not sow:
         return
 
     values = view["state"]["values"]
-    client_email = values["client_email"]["email_input"]["value"]
-    client_name = values["client_name"]["name_input"]["value"]
     company_name = values["company_name"]["company_input"]["value"]
+
+    # Parse signers from modal
+    signers_list = []
+    for i in range(1, signer_count + 1):
+        email_block = values.get(f"signer_{i}_email", {}).get("email_input", {})
+        name_block = values.get(f"signer_{i}_name", {}).get("name_input", {})
+        role_block = values.get(f"signer_{i}_role", {}).get("role_input", {})
+
+        email = (email_block.get("value") or "").strip()
+        name = (name_block.get("value") or "").strip()
+        role = "client"
+        if role_block and role_block.get("selected_option"):
+            role = role_block["selected_option"].get("value", "client")
+
+        if email and name:
+            signers_list.append({
+                "name": name,
+                "email": email,
+                "role": role,
+                "routing_order": i,
+            })
 
     # Parse selected options
     selected = []
@@ -1206,15 +1358,20 @@ def handle_send_sow_submit(ack, body, client, view):
 
     user_id = body["user"]["id"]
 
+    # Primary signer for backward compat
+    primary = signers_list[0] if signers_list else {}
+    client_email = primary.get("email", "")
+    client_name = primary.get("name", "")
+
     # Update SOW record
     sow["client_email"] = client_email
     sow["client_name"] = client_name
     sow["company_name"] = company_name
+    sow["signers"] = signers_list
     sow["status"] = "sent"
     now = datetime.now()
     sow["sent_at"] = now.isoformat()
 
-    # DATA MOAT: Calculate time-to-send (how fast from generation to send)
     try:
         created = datetime.fromisoformat(sow.get("created_at", now.isoformat()))
         time_to_send_ms = int((now - created).total_seconds() * 1000)
@@ -1222,11 +1379,11 @@ def handle_send_sow_submit(ack, body, client, view):
     except Exception:
         time_to_send_ms = 0
 
-    # Build result message
+    signer_summary = ", ".join(f"{s['name']} ({s['email']})" for s in signers_list)
     lines = [
         "✅ *SOW Sent Successfully*",
         "",
-        f"*To:* {client_name} ({client_email})",
+        f"*Signers:* {signer_summary}",
         f"*Company:* {company_name}",
         f"*Project:* {sow.get('title')}",
         f"*Amount:* ${sow.get('pricing', {}).get('total', 0):,.0f}",
@@ -1235,10 +1392,10 @@ def handle_send_sow_submit(ack, body, client, view):
 
     team_id = sow.get("_team_id", "")
 
-    # --- DocuSign (customer's own account) ---
     if "docusign" in selected:
         envelope = send_docusign_envelope(
-            sow, client_email, client_name, company_name, team_id=team_id
+            sow, client_email, client_name, company_name,
+            team_id=team_id, signers=signers_list,
         )
         if envelope:
             sow["docusign_envelope_id"] = envelope.get("envelopeId")
@@ -1249,7 +1406,6 @@ def handle_send_sow_submit(ack, body, client, view):
         else:
             lines.append("⚠️ *DocuSign:* Failed to send — check configuration")
 
-    # --- Stripe Payment Link (customer's own account) ---
     if "stripe_link" in selected:
         link = create_stripe_payment_link(sow, client_email, client_name, team_id=team_id)
         if link:
@@ -1258,7 +1414,6 @@ def handle_send_sow_submit(ack, body, client, view):
         else:
             lines.append("⚠️ *Stripe Payment Link:* Failed — check configuration")
 
-    # --- Stripe Invoice (customer's own account) ---
     if "stripe_invoice" in selected:
         inv = create_stripe_invoice(sow, client_email, client_name, team_id=team_id)
         if inv:
@@ -1267,7 +1422,6 @@ def handle_send_sow_submit(ack, body, client, view):
         else:
             lines.append("⚠️ *Stripe Invoice:* Failed — check configuration")
 
-    # No integrations selected
     if not selected:
         lines.append(
             f"_SOW saved. Connect your accounts to enable e-signatures and invoicing:_\n"
@@ -1579,6 +1733,13 @@ async def require_api_auth(authorization: str = Header(None)):
 # ============================================================================
 
 
+class Signer(BaseModel):
+    name: str
+    email: str
+    role: str = "client"
+    routing_order: int = 1
+
+
 class LineItem(BaseModel):
     description: str
     quantity: int = 1
@@ -1595,6 +1756,7 @@ class CreateSowRequest(BaseModel):
     effectiveDate: str | None = None
     expiresAt: str | None = None
     metadata: dict | None = None
+    signers: list[Signer] | None = None
 
 
 class CustomerAddress(BaseModel):
@@ -1636,7 +1798,23 @@ class CreateSowWithInvoiceRequest(BaseModel):
     effectiveDate: str | None = None
     expiresAt: str | None = None
     metadata: dict | None = None
+    signers: list[Signer] | None = None
     invoice: InvoiceConfig
+
+
+class SendSowRequest(BaseModel):
+    signers: list[Signer]
+    companyName: str | None = None
+    sendOptions: list[Literal["docusign", "stripe_link", "stripe_invoice"]] = Field(
+        default=["docusign"]
+    )
+
+    @field_validator("signers")
+    @classmethod
+    def at_least_one(cls, v):
+        if not v:
+            raise ValueError("At least one signer required")
+        return v
 
 
 # ============================================================================
@@ -1776,6 +1954,8 @@ async def api_create_sow(body: CreateSowRequest, auth: dict = Depends(require_ap
             total_cents += item_total
             line_items_data.append(item.model_dump())
 
+    signers_data = [s.model_dump() for s in body.signers] if body.signers else None
+
     sow_data = {
         "id": sow_id,
         "title": body.title,
@@ -1790,6 +1970,7 @@ async def api_create_sow(body: CreateSowRequest, auth: dict = Depends(require_ap
             "total_cents": total_cents,
             "currency": "usd",
         },
+        "signers": signers_data,
         "status": "draft",
         "created_at": datetime.now().isoformat(),
         "_team_id": workspace_id,
@@ -1966,12 +2147,74 @@ async def api_get_sow(sow_id: str, auth: dict = Depends(require_api_auth)):
         "clientEmail": sow.get("client_email"),
         "description": sow.get("description", ""),
         "lineItems": sow.get("line_items", []),
+        "signers": sow.get("signers"),
         "totalCents": sow.get("pricing", {}).get("total_cents", 0),
         "currency": "usd",
         "createdAt": sow.get("created_at", ""),
         "viewUrl": f"{APP_URL}/sows/{sow['id']}",
         "editUrl": f"{APP_URL}/sows/{sow['id']}/edit",
         "metadata": sow.get("metadata", {}),
+    }
+
+
+@api.post("/api/sows/{sow_id}/send")
+async def api_send_sow(sow_id: str, body: SendSowRequest, auth: dict = Depends(require_api_auth)):
+    """Send a SOW for signature/payment via API. Accepts per-document signers."""
+    workspace_id = auth.get("workspace_id", "")
+    sow = load_sow(sow_id)
+    if not sow:
+        raise HTTPException(status_code=404, detail="SOW not found")
+    if sow.get("_team_id") != workspace_id and sow.get("_team_id") != "api":
+        raise HTTPException(status_code=403, detail="Not your SOW")
+
+    signers_data = [s.model_dump() for s in body.signers]
+    sow["signers"] = signers_data
+    sow["status"] = "sent"
+    sow["sent_at"] = datetime.now().isoformat()
+    if body.companyName:
+        sow["company_name"] = body.companyName
+
+    primary = signers_data[0] if signers_data else {}
+    client_email = primary.get("email", "")
+    client_name = primary.get("name", "")
+    company_name = body.companyName or sow.get("company_name", "")
+
+    results: dict = {}
+
+    if "docusign" in body.sendOptions:
+        envelope = send_docusign_envelope(
+            sow, client_email, client_name, company_name,
+            team_id=workspace_id, signers=signers_data,
+        )
+        if envelope:
+            sow["docusign_envelope_id"] = envelope.get("envelopeId")
+            results["docusign"] = {"envelopeId": envelope.get("envelopeId"), "status": "sent"}
+        else:
+            results["docusign"] = {"error": "Failed to send — check DocuSign configuration"}
+
+    if "stripe_link" in body.sendOptions:
+        link = create_stripe_payment_link(sow, client_email, client_name, team_id=workspace_id)
+        if link:
+            sow["stripe_payment_url"] = link["url"]
+            results["stripeLink"] = {"url": link["url"]}
+        else:
+            results["stripeLink"] = {"error": "Failed — check Stripe configuration"}
+
+    if "stripe_invoice" in body.sendOptions:
+        inv = create_stripe_invoice(sow, client_email, client_name, team_id=workspace_id)
+        if inv:
+            sow["stripe_invoice_id"] = inv["invoice_id"]
+            results["stripeInvoice"] = {"invoiceId": inv["invoice_id"], "url": inv.get("invoice_url")}
+        else:
+            results["stripeInvoice"] = {"error": "Failed — check Stripe configuration"}
+
+    save_sow(sow_id, sow)
+
+    return {
+        "id": sow_id,
+        "status": "sent",
+        "signers": signers_data,
+        **results,
     }
 
 
@@ -2193,6 +2436,45 @@ async def connect_stripe_callback(code: str = "", state: str = ""):
             content=f"<h1>Connection failed</h1><p>{str(e)}</p>",
             status_code=500,
         )
+
+
+# --- BYOK: AI Key Configuration (API) ---
+
+
+@api.post("/connect/ai-key")
+async def connect_ai_key(req: Request, auth: dict = Depends(require_api_auth)):
+    """Configure team's AI provider key (BYOK). Validates before saving."""
+    body = await req.json()
+    api_key = (body.get("api_key") or "").strip()
+    provider = body.get("provider", "anthropic")
+    workspace_id = auth.get("workspace_id", "")
+
+    if not api_key or not api_key.startswith("sk-"):
+        raise HTTPException(status_code=400, detail="Invalid API key format")
+
+    if provider != "anthropic":
+        raise HTTPException(status_code=400, detail="Only 'anthropic' provider is supported")
+
+    try:
+        test_client = Anthropic(api_key=api_key)
+        test_client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=1,
+            messages=[{"role": "user", "content": "hi"}],
+        )
+    except Exception:
+        raise HTTPException(status_code=400, detail="API key validation failed")
+
+    save_team_integrations(workspace_id, {
+        "ai_provider": {
+            "provider": provider,
+            "api_key": api_key,
+            "configured_at": datetime.now().isoformat(),
+        },
+    })
+    _team_ai_clients.pop(workspace_id, None)
+
+    return {"status": "configured", "provider": provider}
 
 
 # --- DocuSign Webhook: Auto-invoice on signature ---
