@@ -99,27 +99,74 @@ async function suggestMappings(fields, profile, context) {
   }
 }
 
+function looksLikeUrl(v) {
+  if (!v) return false;
+  v = v.toLowerCase().trim();
+  return v.startsWith('http') || v.includes('://') || /^[\w.-]+\.[a-z]{2,}(\/|$)/.test(v);
+}
+
 function heuristicMappings(fields, profile) {
   if (!profile || typeof profile !== 'object') return [];
-  const map = {
-    email: 'email',
-    phone: 'phone',
-    companyName: 'companyName',
-    contactName: 'contactName',
-    website: 'website',
-    address: 'address',
-    city: 'city',
-    state: 'state',
-    zip: 'zip',
-    country: 'country',
-    linkedinUrl: 'linkedinUrl',
-    description: 'description',
-  };
+
+  // Split contactName into first/last for name fields
+  const nameParts = (profile.contactName || '').trim().split(/\s+/);
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+
   const byIndex = new Map();
   fields.forEach((f) => {
-    if (f.semanticType && map[f.semanticType]) {
-      const value = profile[map[f.semanticType]] || '';
-      if (value) byIndex.set(f.index, { index: f.index, selector: f.selector, value });
+    if (!f.semanticType) return;
+    let value = '';
+
+    switch (f.semanticType) {
+      // Direct profile mappings
+      case 'email': value = profile.email || ''; break;
+      case 'phone': value = profile.phone || ''; break;
+      case 'companyName': value = profile.companyName || ''; break;
+      case 'address': value = profile.address || ''; break;
+      case 'city': value = profile.city || ''; break;
+      case 'state': value = profile.state || ''; break;
+      case 'zip': value = profile.zip || ''; break;
+      case 'country': value = profile.country || ''; break;
+
+      // Name splitting
+      case 'firstName': value = firstName; break;
+      case 'lastName': value = lastName; break;
+      case 'contactName': value = profile.contactName || ''; break;
+
+      // URL fields — ONLY fill if value looks like a URL
+      case 'website':
+        value = profile.website || '';
+        if (value && !looksLikeUrl(value)) value = '';
+        break;
+      case 'linkedinUrl':
+        value = profile.linkedinUrl || '';
+        if (value && !looksLikeUrl(value) && !value.toLowerCase().includes('linkedin')) value = '';
+        break;
+      case 'twitterUrl':
+        value = profile.twitterUrl || '';
+        if (value && !looksLikeUrl(value)) value = '';
+        break;
+      case 'videoUrl':
+      case 'pitchDeckUrl':
+        // Never fill from heuristics — these need real URLs
+        break;
+
+      // Text fields — only fill description, skip others (need AI context)
+      case 'description':
+        value = profile.description || '';
+        break;
+      case 'shortDescription':
+        value = profile.description || '';
+        break;
+
+      // Skip all other types in heuristics (traction, problem, team, etc.)
+      default:
+        break;
+    }
+
+    if (value) {
+      byIndex.set(f.index, { index: f.index, selector: f.selector, value });
     }
   });
   return Array.from(byIndex.values());
