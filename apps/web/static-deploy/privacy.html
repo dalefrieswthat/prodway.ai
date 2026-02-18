@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy — Prodway AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <meta name="theme-color" content="#050505">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #050505; --surface: #0a0a0a; --border: rgba(255,255,255,0.08);
+            --fg: #fafafa; --fg-secondary: #a1a1aa; --fg-tertiary: #71717a;
+            --accent: #22c55e; --max-w: 720px;
+        }
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.7; -webkit-font-smoothing: antialiased; }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .container { max-width: var(--max-w); margin: 0 auto; padding: 80px 24px; }
+        .back { display: inline-block; margin-bottom: 40px; color: var(--fg-secondary); font-size: 14px; }
+        .back:hover { color: var(--fg); }
+        h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.02em; }
+        .updated { color: var(--fg-tertiary); font-size: 14px; margin-bottom: 48px; }
+        h2 { font-size: 18px; font-weight: 600; margin: 36px 0 12px; color: var(--fg); }
+        p, ul { color: var(--fg-secondary); margin-bottom: 16px; font-size: 15px; }
+        ul { padding-left: 24px; }
+        li { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="/" class="back">&larr; Back to Prodway AI</a>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: February 2026</p>
+
+    <h2>What We Collect</h2>
+    <p>Prodway AI collects only the data necessary to provide our services:</p>
+    <ul>
+        <li><strong>Account data</strong> — Name, email, and Slack workspace ID when you install SowFlow.</li>
+        <li><strong>SOW content</strong> — Project descriptions and generated SOWs you create through the /sow command.</li>
+        <li><strong>Integration tokens</strong> — OAuth tokens for DocuSign and Stripe, stored encrypted and scoped to your workspace.</li>
+        <li><strong>FormPilot data</strong> — Company profile data you enter is stored locally in your browser. It is never sent to our servers unless you click "Fill form."</li>
+    </ul>
+
+    <h2>How We Use It</h2>
+    <ul>
+        <li>Generate SOWs using your project descriptions via Anthropic's Claude API.</li>
+        <li>Send documents for e-signature via your connected DocuSign account.</li>
+        <li>Create invoices via your connected Stripe account.</li>
+        <li>Improve our AI models using aggregated, anonymized usage patterns (never your content).</li>
+    </ul>
+
+    <h2>What We Don't Do</h2>
+    <ul>
+        <li>We don't sell your data.</li>
+        <li>We don't share your content with other customers.</li>
+        <li>We don't train AI on your SOWs or client information.</li>
+        <li>We don't store payment card details — Stripe handles that.</li>
+    </ul>
+
+    <h2>Third Parties</h2>
+    <p>We use these services to operate Prodway AI:</p>
+    <ul>
+        <li><strong>Anthropic</strong> — AI processing (SOW generation, form field mapping).</li>
+        <li><strong>Slack</strong> — Bot interface and OAuth.</li>
+        <li><strong>DocuSign</strong> — E-signatures (your account, not ours).</li>
+        <li><strong>Stripe</strong> — Invoicing and payments (your account, not ours).</li>
+        <li><strong>Railway</strong> — Infrastructure hosting.</li>
+    </ul>
+
+    <h2>Data Retention</h2>
+    <p>SOWs and integration credentials are retained as long as your workspace is active. You can request deletion of all your data by emailing <a href="mailto:dale@prodway.ai">dale@prodway.ai</a>.</p>
+
+    <h2>Contact</h2>
+    <p>Questions? Email <a href="mailto:dale@prodway.ai">dale@prodway.ai</a>.</p>
+</div>
+</body>
+</html>
