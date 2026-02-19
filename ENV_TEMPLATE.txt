@@ -52,7 +52,24 @@ DOCUSIGN_AUTH_SERVER=account-d.docusign.com
 DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi
 
 # --------------------------------------------
-# 5. DATA STORAGE (Optional — defaults to ./data)
+# 5. SENDGRID (Contact form emails)
+# Get API key: https://app.sendgrid.com/settings/api_keys
+# Free tier: 100 emails/day
+# --------------------------------------------
+SENDGRID_API_KEY=
+CONTACT_TO_EMAIL=dale@prodway.ai
+SENDGRID_FROM_EMAIL=noreply@prodway.ai
+
+# --------------------------------------------
+# 6. MERCURY (ACH Invoicing — lower fees for large invoices)
+# Get API token: Mercury Dashboard → Settings → Developers → API Tokens
+# Requires Mercury Plus or Pro plan
+# --------------------------------------------
+MERCURY_API_TOKEN=
+MERCURY_ACCOUNT_ID=
+
+# --------------------------------------------
+# 6. DATA STORAGE (Optional — defaults to ./data)
 # For production, mount a persistent volume
 # --------------------------------------------
 # DATA_DIR=/app/data
