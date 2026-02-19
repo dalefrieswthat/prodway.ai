@@ -19,5 +19,8 @@ httpx>=0.26.0
 # Security
 cryptography>=42.0.0
 
+# Email (contact form via SendGrid REST API — no SDK needed, uses httpx)
+pydantic[email]>=2.0.0
+
 # Utilities
 python-dotenv>=1.0.1

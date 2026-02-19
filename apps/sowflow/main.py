@@ -26,8 +26,10 @@ load_dotenv()  # Load .env file from current directory or parent
 
 import stripe
 import httpx
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, EmailStr
 from anthropic import Anthropic
 from slack_bolt import App
 from slack_bolt.oauth.oauth_settings import OAuthSettings
@@ -63,6 +65,11 @@ DOCUSIGN_BASE_URL = os.environ.get(
 )
 
 APP_URL = os.environ.get("APP_URL", "https://api.prodway.ai")
+
+# SendGrid (contact form emails)
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
+CONTACT_TO_EMAIL = os.environ.get("CONTACT_TO_EMAIL", "dale@prodway.ai")
+SENDGRID_FROM_EMAIL = os.environ.get("SENDGRID_FROM_EMAIL", "noreply@prodway.ai")
 
 # Data directories (file-based storage for MVP — upgrade to Postgres later)
 DATA_DIR = Path(os.environ.get("DATA_DIR", "./data"))
@@ -1408,6 +1415,13 @@ api = FastAPI(
     description="AI-Powered SOW Generation for Slack",
     version="1.0.0",
 )
+api.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://prodway.ai", "https://www.prodway.ai", "http://localhost:3000"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 slack_handler = SlackRequestHandler(bolt_app)
 
 
@@ -1763,6 +1777,88 @@ async def thank_you():
 
 
 # ============================================================================
+# CONTACT FORM (SendGrid)
+# ============================================================================
+
+
+class ContactRequest(BaseModel):
+    name: str
+    email: EmailStr
+    company: str = ""
+    interest: str = ""
+    message: str
+
+
+@api.post("/api/contact")
+async def contact_form(req: ContactRequest):
+    """Receive contact form submissions and email them via SendGrid."""
+    if not SENDGRID_API_KEY:
+        logger.warning("Contact form submitted but SENDGRID_API_KEY not set")
+        raise HTTPException(status_code=503, detail="Email service not configured")
+
+    interest_label = {
+        "sowflow": "SowFlow (SOW generation)",
+        "formpilot": "FormPilot (form auto-fill)",
+        "consulting": "Consulting services",
+        "both": "Both products",
+        "other": "Something else",
+    }.get(req.interest, req.interest or "Not specified")
+
+    subject = f"[Prodway] New inquiry from {req.name}"
+    if req.company:
+        subject += f" ({req.company})"
+
+    body = (
+        f"Name: {req.name}\n"
+        f"Email: {req.email}\n"
+        f"Company: {req.company or 'Not provided'}\n"
+        f"Interested in: {interest_label}\n"
+        f"\nMessage:\n{req.message}"
+    )
+
+    html_body = (
+        f"<h2>New Contact from prodway.ai</h2>"
+        f"<table style='border-collapse:collapse;'>"
+        f"<tr><td style='padding:8px;font-weight:bold;'>Name</td><td style='padding:8px;'>{req.name}</td></tr>"
+        f"<tr><td style='padding:8px;font-weight:bold;'>Email</td><td style='padding:8px;'><a href='mailto:{req.email}'>{req.email}</a></td></tr>"
+        f"<tr><td style='padding:8px;font-weight:bold;'>Company</td><td style='padding:8px;'>{req.company or 'Not provided'}</td></tr>"
+        f"<tr><td style='padding:8px;font-weight:bold;'>Interested in</td><td style='padding:8px;'>{interest_label}</td></tr>"
+        f"</table>"
+        f"<h3>Message</h3>"
+        f"<p style='white-space:pre-wrap;'>{req.message}</p>"
+        f"<hr><p style='color:#999;font-size:12px;'>Reply directly to this email to respond to {req.name}.</p>"
+    )
+
+    payload = {
+        "personalizations": [{"to": [{"email": CONTACT_TO_EMAIL}]}],
+        "from": {"email": SENDGRID_FROM_EMAIL, "name": "Prodway AI"},
+        "reply_to": {"email": req.email, "name": req.name},
+        "subject": subject,
+        "content": [
+            {"type": "text/plain", "value": body},
+            {"type": "text/html", "value": html_body},
+        ],
+    }
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://api.sendgrid.com/v3/mail/send",
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {SENDGRID_API_KEY}",
+                "Content-Type": "application/json",
+            },
+        )
+
+    if resp.status_code not in (200, 201, 202):
+        logger.error(f"SendGrid error {resp.status_code}: {resp.text}")
+        raise HTTPException(status_code=502, detail="Failed to send email")
+
+    logger.info(f"Contact form: {req.name} <{req.email}> — {interest_label}")
+    return {"status": "sent"}
+
+
+# ============================================================================
 # ENTRY POINT
 # ============================================================================
 
@@ -1770,7 +1866,7 @@ if __name__ == "__main__":
     import uvicorn
 
     port = int(os.environ.get("PORT", 3000))
-    logger.info(f"⚡ Starting SowFlow on port {port}")
+    logger.info(f"Starting SowFlow on port {port}")
     logger.info(f"   Install: {APP_URL}/slack/install")
     logger.info(f"   Health:  {APP_URL}/health")
     uvicorn.run(api, host="0.0.0.0", port=port)
