@@ -1005,47 +1005,123 @@
         }
 
         /* ========================================
-           BOTTOM CTA
+           CONTACT FORM
            ======================================== */
-        .bottom-cta {
+        .contact-section {
             padding: 7rem 2rem;
             border-top: 1px solid var(--border);
-            text-align: center;
         }
 
-        .bottom-cta-inner {
-            max-width: 580px;
+        .contact-inner {
+            max-width: 640px;
             margin: 0 auto;
         }
 
-        .cta-glyph {
-            width: 64px;
-            height: 64px;
-            margin: 0 auto 2rem;
-            border-radius: var(--radius);
-            background: var(--accent-muted);
-            display: grid;
-            place-items: center;
+        .contact-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
         }
 
-        .cta-glyph svg {
-            width: 28px;
-            height: 28px;
-            color: var(--accent);
-        }
-
-        .bottom-cta h2 {
+        .contact-header h2 {
             font-size: 2rem;
             font-weight: 700;
             letter-spacing: -0.025em;
             margin-bottom: 0.75rem;
         }
 
-        .bottom-cta p {
+        .contact-header p {
             color: var(--fg-secondary);
             font-size: 1.0625rem;
-            margin-bottom: 2.5rem;
             line-height: 1.65;
+        }
+
+        .contact-form {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group { margin-bottom: 1rem; }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--fg-secondary);
+            margin-bottom: 0.375rem;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--fg);
+            font-family: inherit;
+            font-size: 0.9375rem;
+            transition: border-color var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder { color: var(--fg-tertiary); }
+
+        .form-group textarea { resize: vertical; min-height: 100px; }
+
+        .form-group select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2371717a' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            padding-right: 2.5rem;
+            cursor: pointer;
+        }
+
+        .form-group select option { background: var(--surface); color: var(--fg); }
+
+        .form-submit { width: 100%; margin-top: 0.5rem; }
+
+        .form-success { display: none; text-align: center; padding: 2rem; }
+        .form-success.show { display: block; }
+        .form-fields.hide { display: none; }
+
+        .form-success svg { width: 48px; height: 48px; color: var(--accent); margin: 0 auto 1rem; }
+        .form-success h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .form-success p { color: var(--fg-secondary); font-size: 0.9375rem; }
+
+        .form-error {
+            display: none;
+            padding: 0.75rem 1rem;
+            margin-top: 0.75rem;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-radius: var(--radius-xs);
+            color: #ef4444;
+            font-size: 0.875rem;
+        }
+        .form-error.show { display: block; }
+
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        @media (max-width: 500px) {
+            .form-row { grid-template-columns: 1fr; }
         }
 
         /* ========================================
@@ -1128,7 +1204,7 @@
             .card { padding: 1.5rem; }
             .vision { padding: 5rem 1.25rem; }
             .investors { padding: 5rem 1.25rem; }
-            .bottom-cta { padding: 5rem 1.25rem; }
+            .contact-section { padding: 5rem 1.25rem; }
             .footer-inner { justify-content: center; text-align: center; }
             .nav-links { display: none; }
         }
@@ -1168,7 +1244,7 @@
             <a href="#products" class="nav-link">Products</a>
             <a href="#vision" class="nav-link">Vision</a>
         </div>
-        <a href="mailto:dale@prodway.ai" class="nav-cta">Get Early Access</a>
+        <a href="#contact" class="nav-cta">Get in Touch</a>
     </div>
 </nav>
 
@@ -1185,13 +1261,13 @@
         </p>
 
         <div class="cta-group animate-up delay-2">
-            <a href="#products" class="btn-primary">
-                See the Tools
+            <a href="#contact" class="btn-primary">
+                Tell Us What You're Building
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
                 </svg>
             </a>
-            <a href="mailto:dale@prodway.ai" class="btn-secondary">Get Early Access</a>
+            <a href="#products" class="btn-secondary">See the Tools</a>
         </div>
     </div>
 </section>
@@ -1486,22 +1562,70 @@
     </div>
 </section>
 
-<!-- ============ BOTTOM CTA ============ -->
-<section class="bottom-cta">
-    <div class="bottom-cta-inner reveal">
-        <div class="cta-glyph">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-            </svg>
+<!-- ============ CONTACT FORM ============ -->
+<section id="contact" class="contact-section">
+    <div class="contact-inner">
+        <div class="contact-header reveal">
+            <h2>Let's talk about your project</h2>
+            <p>Tell us what you're building. We'll get back to you within 24 hours.</p>
         </div>
-        <h2>Ready to ship faster?</h2>
-        <p>Join consultants and contractors who are using Prodway to eliminate busywork and focus on what matters.</p>
-        <a href="mailto:dale@prodway.ai" class="btn-primary">
-            Get Early Access
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-            </svg>
-        </a>
+
+        <div class="contact-form reveal">
+            <form id="contactForm">
+                <div class="form-fields">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cf-name">Name *</label>
+                            <input type="text" id="cf-name" name="name" placeholder="Jane Smith" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cf-email">Email *</label>
+                            <input type="email" id="cf-email" name="email" placeholder="jane@company.com" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cf-company">Company</label>
+                            <input type="text" id="cf-company" name="company" placeholder="Acme Inc.">
+                        </div>
+                        <div class="form-group">
+                            <label for="cf-interest">Interested in</label>
+                            <select id="cf-interest" name="interest">
+                                <option value="">Select one...</option>
+                                <option value="sowflow">SowFlow (SOW generation)</option>
+                                <option value="formpilot">FormPilot (form auto-fill)</option>
+                                <option value="consulting">Consulting services</option>
+                                <option value="both">Both products</option>
+                                <option value="other">Something else</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cf-message">What are you building? *</label>
+                        <textarea id="cf-message" name="message" placeholder="Tell us about your project, team size, and what you need help with..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-primary form-submit" id="submitBtn">
+                        Send Message
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                        </svg>
+                    </button>
+
+                    <div class="form-error" id="formError"></div>
+                </div>
+
+                <div class="form-success" id="formSuccess">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <h3>Message sent!</h3>
+                    <p>Thanks for reaching out. We'll get back to you within 24 hours.</p>
+                </div>
+            </form>
+        </div>
     </div>
 </section>
 
@@ -1533,6 +1657,32 @@
         });
     },{threshold:0.15,rootMargin:'0px 0px -40px 0px'});
     document.querySelectorAll('.reveal').forEach(function(el){obs.observe(el)});
+})();
+</script>
+
+<script>
+(function(){
+    var form=document.getElementById('contactForm'),
+        btn=document.getElementById('submitBtn'),
+        errorEl=document.getElementById('formError'),
+        successEl=document.getElementById('formSuccess'),
+        fieldsEl=form.querySelector('.form-fields'),
+        API='https://api.prodway.ai/api/contact';
+    form.addEventListener('submit',function(e){
+        e.preventDefault();
+        errorEl.classList.remove('show');
+        btn.disabled=true;btn.textContent='Sending...';
+        var d={name:form.elements.name.value.trim(),email:form.elements.email.value.trim(),
+               company:form.elements.company.value.trim(),interest:form.elements.interest.value,
+               message:form.elements.message.value.trim()};
+        fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
+        .then(function(r){if(!r.ok)throw new Error();return r.json()})
+        .then(function(){fieldsEl.classList.add('hide');successEl.classList.add('show');
+            if(window.posthog)posthog.capture('contact_form_submitted',{interest:d.interest,has_company:!!d.company});})
+        .catch(function(){errorEl.textContent='Something went wrong. Please try again or email dale@prodway.ai directly.';
+            errorEl.classList.add('show');btn.disabled=false;
+            btn.innerHTML='Send Message <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>';});
+    });
 })();
 </script>
 

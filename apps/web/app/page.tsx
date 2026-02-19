@@ -1,4 +1,4 @@
-import StatsSection from './components/StatsSection';
+import ContactForm from './components/ContactForm';
 
 export default function Home() {
   return (
@@ -15,10 +15,10 @@ export default function Home() {
             <span className="font-semibold text-[17px] text-[#fafafa] tracking-tight">Prodway</span>
           </div>
           <a
-            href="mailto:dale@prodway.ai"
+            href="#contact"
             className="px-4 py-2.5 text-[15px] font-medium border border-[#262626] rounded-lg text-[#fafafa] hover:border-green-500/40 hover:bg-green-500/10 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-[#050505] transition-colors duration-200"
           >
-            Get Early Access
+            Get in Touch
           </a>
         </div>
       </nav>
@@ -48,10 +48,10 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a
-              href="mailto:dale@prodway.ai"
+              href="#contact"
               className="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 py-3 bg-green-500 text-[#050505] font-semibold text-[15px] rounded-lg hover:bg-[#16a34a] focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-[#050505] transition-colors duration-200"
             >
-              Request Access
+              Tell Us What You&apos;re Building
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>
@@ -60,14 +60,31 @@ export default function Home() {
               href="#products"
               className="inline-flex items-center justify-center min-h-[48px] px-6 py-3 border border-[#262626] rounded-lg text-[#fafafa] font-medium text-[15px] hover:bg-white/5 hover:border-[#404040] focus:outline-none focus:ring-2 focus:ring-[#525252] focus:ring-offset-2 focus:ring-offset-[#050505] transition-colors duration-200"
             >
-              See products
+              See the Tools
             </a>
           </div>
         </div>
       </section>
 
-      {/* Stats — live counts + value props */}
-      <StatsSection />
+      {/* Stats — scannable (live counts via API when build supports client fetch) */}
+      <section className="py-14 border-y border-[#262626]">
+        <div className="max-w-3xl mx-auto px-5">
+          <div className="grid grid-cols-3 gap-8 text-center">
+            <div>
+              <div className="text-3xl md:text-4xl font-bold tracking-tight gradient-text">—</div>
+              <div className="text-[13px] font-medium text-[#a3a3a3] mt-1.5">Forms filled</div>
+            </div>
+            <div>
+              <div className="text-3xl md:text-4xl font-bold tracking-tight gradient-text">—</div>
+              <div className="text-[13px] font-medium text-[#a3a3a3] mt-1.5">SOWs sent</div>
+            </div>
+            <div>
+              <div className="text-3xl md:text-4xl font-bold tracking-tight gradient-text">60s</div>
+              <div className="text-[13px] font-medium text-[#a3a3a3] mt-1.5">Request to SOW</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Products Section — YC/Airbnb quality */}
       <section id="products" className="py-20 md:py-28 px-6">
@@ -189,31 +206,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA — single focus */}
-      <section className="py-20 md:py-24 px-5 border-t border-[#262626]">
-        <div className="max-w-xl mx-auto text-center">
-          <div className="w-14 h-14 rounded-xl bg-green-500/10 flex items-center justify-center mx-auto mb-6">
-            <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-          </div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-[#fafafa] mb-3">
-            Stop trading time for money
-          </h2>
-          <p className="text-[#a3a3a3] text-base mb-8 max-w-md mx-auto">
-            Join the waitlist for early access. We&apos;re onboarding design partners now.
-          </p>
-          <a
-            href="mailto:dale@prodway.ai"
-            className="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 py-3 bg-green-500 text-[#050505] font-semibold text-[15px] rounded-lg hover:bg-[#16a34a] focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-[#050505] transition-colors duration-200"
-          >
-            Get Early Access
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </a>
-        </div>
-      </section>
+      {/* Contact Form */}
+      <ContactForm />
 
       {/* Footer */}
       <footer className="py-8 px-5 border-t border-[#262626]">
