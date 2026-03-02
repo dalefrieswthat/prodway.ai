@@ -314,7 +314,7 @@ _AI_CLIENT_TTL = 300  # 5 min — refresh if team rotates their key
 def _call_gemini(prompt: str, system_prompt: str, max_tokens: int = 2000) -> tuple[str, dict]:
     """Call Gemini API. Returns (text_response, usage_dict)."""
     import httpx
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={GOOGLE_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GOOGLE_API_KEY}"
     payload = {
         "contents": [{"parts": [{"text": f"{system_prompt}\n\n{prompt}"}]}],
         "generationConfig": {"maxOutputTokens": max_tokens}
@@ -496,7 +496,7 @@ def generate_sow(description: str, team_id: str = "") -> tuple[dict, object, int
         class GeminiResponse:
             def __init__(self, text, usage):
                 self.content = [type("Content", (), {"text": text})()]
-                self.model = "gemini-2.0-flash-lite"
+                self.model = "gemini-1.5-flash"
                 self.usage = type("Usage", (), {"input_tokens": usage["input_tokens"], "output_tokens": usage["output_tokens"]})()
         response = GeminiResponse(text, usage)
         sow_content = text
