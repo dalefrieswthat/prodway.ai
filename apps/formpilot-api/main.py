@@ -17,6 +17,35 @@ from pydantic import BaseModel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# AI Provider config (Gemini cheap default, Anthropic for BYOK/platform fallback)
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+DEFAULT_AI_PROVIDER = os.environ.get("DEFAULT_AI_PROVIDER", "gemini")  # gemini (cheap) or anthropic
+
+
+def _call_gemini(prompt: str, max_tokens: int = 1024) -> str:
+    """Call Gemini API. Returns text response."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={GOOGLE_API_KEY}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"maxOutputTokens": max_tokens}
+    }
+    resp = httpx.post(url, json=payload, timeout=60)
+    resp.raise_for_status()
+    data = resp.json()
+    return data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+
+
+def _get_ai_provider() -> str:
+    """Determine which AI provider to use: gemini (cheap) or anthropic."""
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if DEFAULT_AI_PROVIDER == "anthropic" and anthropic_key:
+        return "anthropic"
+    if GOOGLE_API_KEY:
+        return "gemini"
+    if anthropic_key:
+        return "anthropic"
+    return "none"
+
 app = FastAPI(
     title="FormPilot API",
     description="AI-powered form field mapping for FormPilot Chrome extension",
@@ -267,12 +296,12 @@ Only include fields where you have a valid, appropriate value. Omit fields rathe
 @app.post("/formpilot/suggest-mappings", response_model=SuggestMappingsResponse)
 async def suggest_mappings(body: SuggestMappingsRequest) -> SuggestMappingsResponse:
     """
-    Suggest mappings from company profile to form fields using Claude.
-    Extension sends fields + profile; we return list of { index, value }.
+    Suggest mappings from company profile to form fields.
+    Uses Gemini (cheap default) or Anthropic (fallback).
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        logger.warning("ANTHROPIC_API_KEY not set; returning empty mappings")
+    provider = _get_ai_provider()
+    if provider == "none":
+        logger.warning("No AI API key set; returning empty mappings")
         return SuggestMappingsResponse(mappings=[])
 
     fields_data = list(body.fields)
@@ -281,14 +310,18 @@ async def suggest_mappings(body: SuggestMappingsRequest) -> SuggestMappingsRespo
 
     prompt = build_prompt(fields_data, profile, context)
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model="claude-3-5-haiku-20241022",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text = msg.content[0].text if msg.content else ""
+        if provider == "gemini":
+            text = _call_gemini(prompt, max_tokens=1024)
+        else:
+            import anthropic
+            api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+            client = anthropic.Anthropic(api_key=api_key)
+            msg = client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=1024,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = msg.content[0].text if msg.content else ""
         # Extract JSON array from response (handle markdown code blocks)
         if "```" in text:
             start = text.find("[")
@@ -340,10 +373,10 @@ async def suggest_mappings(body: SuggestMappingsRequest) -> SuggestMappingsRespo
 async def suggest_field(body: SuggestFieldRequest) -> dict:
     """
     Suggest a value for a single field using minimal tokens.
-    The sparkle icon sends field context + nearby fields for a targeted suggestion.
+    Uses Gemini (cheap default) or Anthropic (fallback).
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
+    provider = _get_ai_provider()
+    if provider == "none":
         return {"value": None, "reasoning": "API key not configured"}
 
     field = body.field
@@ -395,14 +428,18 @@ Respond with JSON only: {{"value": "the value to fill", "reasoning": "brief expl
 If you don't have enough information to confidently fill this field, respond: {{"value": null, "reasoning": "why"}}"""
 
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model="claude-3-5-haiku-20241022",
-            max_tokens=512,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text = (msg.content[0].text if msg.content else "").strip()
+        if provider == "gemini":
+            text = _call_gemini(prompt, max_tokens=512).strip()
+        else:
+            import anthropic
+            api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+            client = anthropic.Anthropic(api_key=api_key)
+            msg = client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=512,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = (msg.content[0].text if msg.content else "").strip()
         if "```" in text:
             start = text.find("{")
             end = text.rfind("}") + 1
@@ -437,12 +474,13 @@ def _strip_html(html: str) -> str:
 @app.post("/formpilot/import-from-url")
 async def import_from_url(body: ImportFromUrlRequest) -> dict:
     """
-    Fetch URL (e.g. LinkedIn company page), extract text, use Claude to extract
+    Fetch URL (e.g. LinkedIn company page), extract text, use AI to extract
     structured profile + company context. Returns { profile, context } for extension.
+    Uses Gemini (cheap default) or Anthropic (fallback).
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY not set")
+    provider = _get_ai_provider()
+    if provider == "none":
+        raise HTTPException(status_code=503, detail="No AI API key configured")
 
     url = (body.url or "").strip()
     if not url or not url.startswith("http"):
@@ -478,14 +516,18 @@ Output a JSON object with two keys:
 Respond with only the JSON object, no markdown."""
 
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model="claude-3-5-haiku-20241022",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        reply = (msg.content[0].text if msg.content else "").strip()
+        if provider == "gemini":
+            reply = _call_gemini(prompt, max_tokens=1024).strip()
+        else:
+            import anthropic
+            api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+            client = anthropic.Anthropic(api_key=api_key)
+            msg = client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=1024,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            reply = (msg.content[0].text if msg.content else "").strip()
         if "```" in reply:
             start = reply.find("{")
             end = reply.rfind("}") + 1

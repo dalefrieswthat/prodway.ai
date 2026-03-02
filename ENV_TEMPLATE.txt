@@ -8,10 +8,22 @@ APP_ENV=development
 APP_URL=https://api.prodway.ai
 
 # --------------------------------------------
-# 1. ANTHROPIC (Required)
-# Get from: https://console.anthropic.com
+# 1. AI PROVIDERS (At least one required)
+#
+# GOOGLE_API_KEY: Gemini 2.0 Flash Lite (cheap default)
+#   Get from: https://aistudio.google.com/apikey
+#   Cost: ~$0.075/1M tokens (very cheap)
+#
+# ANTHROPIC_API_KEY: Claude (higher quality, used for BYOK)
+#   Get from: https://console.anthropic.com
+#   Cost: ~$3/1M input, $15/1M output (more expensive)
+#
+# DEFAULT_AI_PROVIDER: Which to use when both are set
+#   Options: gemini (default, cheap), anthropic (quality)
 # --------------------------------------------
+GOOGLE_API_KEY=
 ANTHROPIC_API_KEY=
+DEFAULT_AI_PROVIDER=gemini
 
 # --------------------------------------------
 # 2. SLACK — Marketplace Distribution (Required)
@@ -75,9 +87,11 @@ MERCURY_ACCOUNT_ID=
 # DATA_DIR=/app/data
 
 # --------------------------------------------
-# 6. FORMPILOT API (separate deploy, e.g. Railway)
+# 7. FORMPILOT API (separate deploy, e.g. Railway)
 # Used by FormPilot Chrome extension for AI field mapping + Import from URL.
 # Set in Railway app variables when deploying apps/formpilot-api.
+#
+# Required: At least one of GOOGLE_API_KEY or ANTHROPIC_API_KEY
+# Optional: DEFAULT_AI_PROVIDER (gemini or anthropic)
+# Railway sets PORT automatically.
 # --------------------------------------------
-# ANTHROPIC_API_KEY=   (same or separate key)
-# PORT=8000            (Railway sets PORT automatically)

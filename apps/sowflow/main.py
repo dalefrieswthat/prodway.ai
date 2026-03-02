@@ -51,6 +51,8 @@ logger = logging.getLogger("sowflow")
 # ============================================================================
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+DEFAULT_AI_PROVIDER = os.environ.get("DEFAULT_AI_PROVIDER", "gemini")  # gemini (cheap) or anthropic
 SLACK_CLIENT_ID = os.environ.get("SLACK_CLIENT_ID", "")
 SLACK_CLIENT_SECRET = os.environ.get("SLACK_CLIENT_SECRET", "")
 SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", "")
@@ -305,23 +307,54 @@ def get_team_ai_config(team_id: str) -> dict | None:
     return None
 
 
-_team_ai_clients: dict[str, tuple[Anthropic, float]] = {}
+_team_ai_clients: dict[str, tuple] = {}  # (client, timestamp, provider)
 _AI_CLIENT_TTL = 300  # 5 min — refresh if team rotates their key
 
 
-def _resolve_ai_client(team_id: str = "") -> Anthropic:
-    """Resolve AI client: team key > platform key > error."""
+def _call_gemini(prompt: str, system_prompt: str, max_tokens: int = 2000) -> tuple[str, dict]:
+    """Call Gemini API. Returns (text_response, usage_dict)."""
+    import httpx
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={GOOGLE_API_KEY}"
+    payload = {
+        "contents": [{"parts": [{"text": f"{system_prompt}\n\n{prompt}"}]}],
+        "generationConfig": {"maxOutputTokens": max_tokens}
+    }
+    resp = httpx.post(url, json=payload, timeout=60)
+    resp.raise_for_status()
+    data = resp.json()
+    text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+    usage = data.get("usageMetadata", {})
+    return text, {"input_tokens": usage.get("promptTokenCount", 0), "output_tokens": usage.get("candidatesTokenCount", 0)}
+
+
+def _resolve_ai_provider(team_id: str = "") -> tuple[str, object | None]:
+    """
+    Resolve AI provider: team BYOK > platform Anthropic > platform Gemini.
+    Returns (provider_name, client_or_None).
+    - "anthropic" with Anthropic client for BYOK or platform Anthropic
+    - "gemini" with None (uses direct API call)
+    """
+    # Check team BYOK first
     if team_id:
         config = get_team_ai_config(team_id)
-        if config and config.get("provider", "anthropic") == "anthropic" and config.get("api_key"):
+        if config and config.get("api_key"):
+            provider = config.get("provider", "anthropic")
             cached = _team_ai_clients.get(team_id)
-            if cached and (_time.monotonic() - cached[1]) < _AI_CLIENT_TTL:
-                return cached[0]
-            client = Anthropic(api_key=config["api_key"])
-            _team_ai_clients[team_id] = (client, _time.monotonic())
-            return client
+            if cached and (_time.monotonic() - cached[1]) < _AI_CLIENT_TTL and cached[2] == provider:
+                return provider, cached[0]
+            if provider == "anthropic":
+                client = Anthropic(api_key=config["api_key"])
+                _team_ai_clients[team_id] = (client, _time.monotonic(), provider)
+                return "anthropic", client
+            # Future: support OpenAI BYOK here
+    
+    # Platform default: prefer cheap Gemini, fall back to Anthropic
+    if DEFAULT_AI_PROVIDER == "anthropic" and claude:
+        return "anthropic", claude
+    if GOOGLE_API_KEY:
+        return "gemini", None
     if claude:
-        return claude
+        return "anthropic", claude
     raise ValueError("No AI key configured — add yours with /sow config ai-key")
 
 
@@ -445,40 +478,54 @@ Return ONLY valid JSON with this structure:
 
 def generate_sow(description: str, team_id: str = "") -> tuple[dict, object, int]:
     """
-    Generate a SOW from a natural language project description using Claude.
+    Generate a SOW from a natural language project description.
+    Uses Gemini (cheap default) or Anthropic (BYOK/platform).
 
     Returns: (sow_dict, raw_response, generation_time_ms)
     The raw response and timing are used for data moat tracking.
     """
-    ai_client = _resolve_ai_client(team_id)
+    provider, client = _resolve_ai_provider(team_id)
 
     start = _time.monotonic()
-    response = ai_client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=2000,
-        system=SOW_SYSTEM_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": f"Generate a SOW for this project:\n\n{description}",
-            }
-        ],
-    )
-    generation_time_ms = int((_time.monotonic() - start) * 1000)
-
-    content = response.content[0].text
+    
+    if provider == "gemini":
+        prompt = f"Generate a SOW for this project:\n\n{description}"
+        text, usage = _call_gemini(prompt, SOW_SYSTEM_PROMPT, max_tokens=2000)
+        generation_time_ms = int((_time.monotonic() - start) * 1000)
+        # Create a response-like object for metadata tracking
+        class GeminiResponse:
+            def __init__(self, text, usage):
+                self.content = [type("Content", (), {"text": text})()]
+                self.model = "gemini-2.0-flash-lite"
+                self.usage = type("Usage", (), {"input_tokens": usage["input_tokens"], "output_tokens": usage["output_tokens"]})()
+        response = GeminiResponse(text, usage)
+        sow_content = text
+    else:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            system=SOW_SYSTEM_PROMPT,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Generate a SOW for this project:\n\n{description}",
+                }
+            ],
+        )
+        generation_time_ms = int((_time.monotonic() - start) * 1000)
+        sow_content = response.content[0].text
 
     # Extract JSON from potential markdown code blocks
-    json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
+    json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", sow_content)
     if json_match:
-        content = json_match.group(1)
+        sow_content = json_match.group(1)
 
     try:
-        sow = json.loads(content)
+        sow = json.loads(sow_content)
     except json.JSONDecodeError:
         sow = {
             "title": "Project Proposal",
-            "executive_summary": content[:500],
+            "executive_summary": sow_content[:500],
             "scope": ["See details above"],
             "deliverables": ["TBD"],
             "timeline": [
