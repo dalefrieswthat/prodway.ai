@@ -100,7 +100,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Deploy to Railway
-        if: ${{ secrets.RAILWAY_TOKEN != '' }}
         uses: berviantoleo/railway-deploy@main
         with:
           railway_token: ${{ secrets.RAILWAY_TOKEN }}
