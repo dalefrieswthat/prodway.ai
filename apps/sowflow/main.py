@@ -834,13 +834,16 @@ def _docusign_signers(
                     "anchorXOffset": "0",
                     "anchorYOffset": "0",
                 }],
-                "dateSignedTabs": [{
+                "dateTabs": [{
                     "documentId": "1",
                     "pageNumber": "1",
                     "anchorString": f"[SIGNER_{i}_DATE]",
                     "anchorUnits": "pixels",
                     "anchorXOffset": "0",
                     "anchorYOffset": "0",
+                    "tabLabel": f"signer_{i}_date",
+                    "required": "true",
+                    "locked": "false",
                 }],
             },
         })
