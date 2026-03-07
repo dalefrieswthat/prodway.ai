@@ -476,7 +476,70 @@
 
         .logo-pill:hover .logo-mono { opacity: 0.9; }
 
+        
         /* ========================================
+           SERVICES SECTION
+           ======================================== */
+        .services {
+            padding: 7rem 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .services-grid {
+            max-width: var(--max-w);
+            margin: 0 auto;
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .services-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        .service-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            transition: all 0.3s var(--ease);
+        }
+
+        .service-card:hover {
+            border-color: rgba(34, 197, 94, 0.2);
+            transform: translateY(-4px);
+        }
+
+        .service-card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-sm);
+            background: var(--accent-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .service-card-icon svg {
+            width: 24px;
+            height: 24px;
+            color: var(--accent);
+        }
+
+        .service-card h3 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 0.625rem;
+            letter-spacing: -0.01em;
+        }
+
+        .service-card p {
+            font-size: 0.9375rem;
+            color: var(--fg-secondary);
+            line-height: 1.65;
+        }
+
+/* ========================================
            HOW IT WORKS (FLYWHEEL)
            ======================================== */
         .how-it-works {
@@ -1317,7 +1380,7 @@
             <span class="logo-text">Prodway</span>
         </a>
         <div class="nav-links">
-            <a href="#how-it-works" class="nav-link">How it works</a>
+            <a href="#services" class="nav-link">Services</a>
             <a href="#products" class="nav-link">Products</a>
             <a href="/slides" class="nav-link">Deck</a>
         </div>
@@ -1329,12 +1392,12 @@
 <section class="hero grid-bg">
     <div class="hero-inner">
         <h1 class="animate-up">
-            AI tools built from<br>
-            <span class="gradient-text">workflows inside startups.</span>
+            Scale engineering.<br>
+            <span class="gradient-text">Without scaling headcount.</span>
         </h1>
 
         <p class="hero-sub animate-up delay-1">
-            Through engineering engagements with VC-backed startups, we see the same operational workflows failing — repeatedly. We build AI tools to fix them, validated before a line of code is written.
+            We help VC-backed startups ship infrastructure, automate back-office workflows, and scale engineering — without immediately hiring FTEs. Plus AI tools built from the patterns we see across dozens of engagements.
         </p>
 
         <div class="cta-group animate-up delay-2">
@@ -1392,12 +1455,53 @@
     </div>
 </section>
 
+<!-- ============ SERVICES ============ -->
+<section id="services" class="services">
+    <div class="section-header reveal">
+        <span class="section-eyebrow">What We Do</span>
+        <h2>Engineering that scales with you</h2>
+        <p>Short engagements, fast delivery. No long-term contracts or bloated teams.</p>
+    </div>
+
+    <div class="services-grid">
+        <div class="service-card reveal">
+            <div class="service-card-icon">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                </svg>
+            </div>
+            <h3>Infrastructure & DevOps</h3>
+            <p>Kubernetes migrations, CI/CD pipelines, cloud architecture. Ship faster without hiring a platform team.</p>
+        </div>
+
+        <div class="service-card reveal">
+            <div class="service-card-icon">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+            </div>
+            <h3>Back-Office Automation</h3>
+            <p>SOWs, invoicing, contracts, onboarding. We automate the workflows that drain your ops team.</p>
+        </div>
+
+        <div class="service-card reveal">
+            <div class="service-card-icon">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+            </div>
+            <h3>Feature Delivery</h3>
+            <p>Need to ship fast for a launch or funding milestone? We embed with your team and get it done.</p>
+        </div>
+    </div>
+</section>
+
 <!-- ============ HOW IT WORKS ============ -->
 <section id="how-it-works" class="how-it-works">
     <div class="section-header reveal">
-        <span class="section-eyebrow">How It Works</span>
-        <h2>The discovery flywheel</h2>
-        <p>Engineering work reveals problems. Problems become products. Products fund more discovery.</p>
+        <span class="section-eyebrow">Why This Works</span>
+        <h2>Built from real problems</h2>
+        <p>We do the work, see what breaks, and build tools to fix it. No guessing.</p>
     </div>
 
     <div class="flywheel">
