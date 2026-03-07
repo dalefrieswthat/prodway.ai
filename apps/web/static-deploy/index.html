@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prodway AI — The Autonomous Back-Office for the Service Economy</title>
-    <meta name="description" content="AI agents that deliver tens of thousands of dollars worth of service work in a fraction of the time — at 90% margins. Internal tools, turned into a global platform.">
-    <meta property="og:title" content="Prodway AI — The Autonomous Back-Office for the Service Economy">
-    <meta property="og:description" content="AI agents that deliver tens of thousands of dollars worth of service work in a fraction of the time — at 90% margins.">
+    <title>Prodway AI — AI Tools Built From Workflows Inside VC-Backed Startups</title>
+    <meta name="description" content="AI tools built from real workflows discovered inside VC-backed startups. SOW generation, form auto-fill, and invoicing — validated before launch.">
+    <meta property="og:title" content="Prodway AI — AI Tools Built From Workflows Inside VC-Backed Startups">
+    <meta property="og:description" content="AI tools built from real workflows discovered inside VC-backed startups. SOW generation, form auto-fill, and invoicing.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://prodway.ai">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1124,7 +1124,84 @@
             .form-row { grid-template-columns: 1fr; }
         }
 
+        
         /* ========================================
+           TEAM SECTION
+           ======================================== */
+        .team {
+            padding: 7rem 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .team-inner {
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        .team-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2.5rem;
+            text-align: center;
+        }
+
+        .team-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--accent-muted);
+            margin: 0 auto 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .team-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .team-card .team-role {
+            font-size: 0.875rem;
+            color: var(--accent);
+            font-weight: 500;
+            margin-bottom: 1.25rem;
+        }
+
+        .team-card .team-bio {
+            font-size: 0.9375rem;
+            color: var(--fg-secondary);
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+        }
+
+        .team-links {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .team-links a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.8125rem;
+            color: var(--fg-tertiary);
+            transition: color var(--transition);
+        }
+
+        .team-links a:hover { color: var(--fg); }
+
+        .team-links svg {
+            width: 16px;
+            height: 16px;
+        }
+/* ========================================
            FOOTER
            ======================================== */
         footer {
@@ -1242,7 +1319,7 @@
         <div class="nav-links">
             <a href="#how-it-works" class="nav-link">How it works</a>
             <a href="#products" class="nav-link">Products</a>
-            <a href="#vision" class="nav-link">Vision</a>
+            <a href="/slides" class="nav-link">Deck</a>
         </div>
         <a href="#contact" class="nav-cta">Get in Touch</a>
     </div>
@@ -1252,12 +1329,12 @@
 <section class="hero grid-bg">
     <div class="hero-inner">
         <h1 class="animate-up">
-            Ship faster.<br>
-            <span class="gradient-text">Scale without hiring.</span>
+            AI tools built from<br>
+            <span class="gradient-text">workflows inside startups.</span>
         </h1>
 
         <p class="hero-sub animate-up delay-1">
-            AI-powered tools for consultants and contractors. Generate SOWs in 60 seconds, auto-fill any form, invoice automatically. We use these tools to deliver $50k+ projects — now they're yours.
+            Through engineering engagements with VC-backed startups, we see the same operational workflows failing — repeatedly. We build AI tools to fix them, validated before a line of code is written.
         </p>
 
         <div class="cta-group animate-up delay-2">
@@ -1267,7 +1344,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
                 </svg>
             </a>
-            <a href="#products" class="btn-secondary">See the Tools</a>
+            <a href="/slides" class="btn-secondary">View Deck</a>
         </div>
     </div>
 </section>
@@ -1276,20 +1353,20 @@
 <section class="metrics-bar">
     <div class="metrics-grid reveal">
         <div class="metric">
+            <div class="metric-value gradient-text">$42K</div>
+            <div class="metric-label">Revenue Since Jan 2026</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value gradient-text">100%</div>
+            <div class="metric-label">VC-Backed Clients</div>
+        </div>
+        <div class="metric">
             <div class="metric-value gradient-text">60s</div>
             <div class="metric-label">SOW Generation</div>
         </div>
         <div class="metric">
-            <div class="metric-value gradient-text">$50k+</div>
-            <div class="metric-label">Projects Delivered</div>
-        </div>
-        <div class="metric">
-            <div class="metric-value gradient-text">1-click</div>
-            <div class="metric-label">E-signatures</div>
-        </div>
-        <div class="metric">
-            <div class="metric-value gradient-text">Free</div>
-            <div class="metric-label">To Start</div>
+            <div class="metric-value gradient-text">$0</div>
+            <div class="metric-label">Marketing Spend</div>
         </div>
     </div>
 </section>
@@ -1297,7 +1374,7 @@
 <!-- ============ SOCIAL PROOF ============ -->
 <section class="social-proof">
     <div class="reveal">
-        <p class="social-proof-label">Built for fast-moving teams backed by</p>
+        <p class="social-proof-label">Our clients are backed by</p>
         <div class="logos-row">
             <div class="logo-pill">
                 <img src="/logos/ycombinator.svg" alt="Y Combinator" class="logo-yc"
@@ -1319,15 +1396,15 @@
 <section id="how-it-works" class="how-it-works">
     <div class="section-header reveal">
         <span class="section-eyebrow">How It Works</span>
-        <h2>From brief to invoice in minutes</h2>
-        <p>The tools we built to run a lean consulting practice — now available to everyone.</p>
+        <h2>The discovery flywheel</h2>
+        <p>Engineering work reveals problems. Problems become products. Products fund more discovery.</p>
     </div>
 
     <div class="flywheel">
         <div class="flywheel-step reveal">
             <div class="flywheel-number">1</div>
-            <h3>Describe the work</h3>
-            <p>Type a quick brief in Slack. "K8s migration, 50k to 500k users, 6 weeks." That's it.</p>
+            <h3>Engineering engagement</h3>
+            <p>We do real infrastructure work for VC-backed startups. We see their actual workflows — what breaks, what's slow, what burns hours.</p>
             <svg class="flywheel-arrow" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
             </svg>
@@ -1335,8 +1412,8 @@
 
         <div class="flywheel-step reveal">
             <div class="flywheel-number">2</div>
-            <h3>Review & send</h3>
-            <p>Get a professional SOW in 60 seconds. Edit if needed, then send for e-signature with one click.</p>
+            <h3>Discover patterns</h3>
+            <p>Same operational pain points appear across multiple companies. SOW friction, form fatigue, invoice chaos — validated problems.</p>
             <svg class="flywheel-arrow" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
             </svg>
@@ -1344,8 +1421,8 @@
 
         <div class="flywheel-step reveal">
             <div class="flywheel-number">3</div>
-            <h3>Get paid</h3>
-            <p>Signed SOW triggers automatic invoicing via Stripe. You focus on the work, we handle the paperwork.</p>
+            <h3>Ship products</h3>
+            <p>Build tools that fix what we saw. Launch to clients who already trust us. Revenue funds more engagements.</p>
         </div>
     </div>
 </section>
@@ -1354,8 +1431,8 @@
 <section id="products" class="products">
     <div class="section-header reveal">
         <span class="section-eyebrow">Products</span>
-        <h2>Two tools. Zero busywork.</h2>
-        <p>Everything you need to go from conversation to cash — without the admin overhead.</p>
+        <h2>Live now. Validated in production.</h2>
+        <p>Tools built from real problems we saw — and fixed — inside VC-backed startups.</p>
     </div>
 
     <div class="products-grid">
@@ -1452,7 +1529,7 @@
     </div>
 
     <div class="data-callout reveal">
-        <p>Built by a consultant, for consultants. <strong>These are the tools we use every day.</strong></p>
+        <p>Every tool we build starts with a real problem — discovered inside a funded startup. <strong>No surveys. No guessing.</strong></p>
     </div>
 </section>
 
@@ -1460,13 +1537,14 @@
 <section id="vision" class="vision">
     <div class="vision-inner">
         <div class="vision-content reveal">
-            <h2>What we're <span class="gradient-text-purple">building next</span></h2>
+            <h2>The <span class="gradient-text-purple">operating system</span> for AI-native service businesses</h2>
             <p>
-                SowFlow and FormPilot are just the start. We're building toward a full-service AI assistant
-                that handles the entire consulting lifecycle — from first conversation to final invoice.
+                SowFlow and FormPilot are our first two products. The vision is bigger: 
+                an AI-powered back-office that handles everything from lead to invoice.
             </p>
             <p>
-                Every project we deliver, every SOW we generate, every decision we document makes the tools smarter.
+                Each engagement reveals more workflows. Each workflow becomes a potential product. 
+                The discovery engine never stops.
             </p>
 
             <ul class="vision-list">
@@ -1474,19 +1552,19 @@
                     <svg class="vision-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    <span><strong>Slack-native:</strong> Lives where your team already works</span>
+                    <span><strong>Problem-validated:</strong> We see the pain before we build the fix</span>
                 </li>
                 <li>
                     <svg class="vision-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    <span><strong>Context-aware:</strong> Remembers your past projects and decisions</span>
+                    <span><strong>Distribution built-in:</strong> Launch to clients who already trust us</span>
                 </li>
                 <li>
                     <svg class="vision-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    <span><strong>Always improving:</strong> Gets better with every use</span>
+                    <span><strong>Compounding data:</strong> Every workflow we see makes every product smarter</span>
                 </li>
             </ul>
         </div>
@@ -1496,22 +1574,22 @@
                 <div class="vision-stage active">
                     <div class="stage-indicator"></div>
                     <div class="stage-content">
-                        <strong>Now: SOW + Form Tools</strong>
-                        <span>Generate proposals, fill forms, invoice clients</span>
+                        <strong>Now: SowFlow + FormPilot</strong>
+                        <span>SOW generation, form auto-fill, e-signatures, invoicing</span>
                     </div>
                 </div>
                 <div class="vision-stage">
                     <div class="stage-indicator"></div>
                     <div class="stage-content">
-                        <strong>Next: Project Assistant</strong>
-                        <span>Answer questions, suggest next steps, track progress</span>
+                        <strong>Next: More workflow tools</strong>
+                        <span>RFP responses, time tracking, project updates</span>
                     </div>
                 </div>
                 <div class="vision-stage future">
                     <div class="stage-indicator"></div>
                     <div class="stage-content">
-                        <strong>Future: Full Service AI</strong>
-                        <span>Handle entire client engagements autonomously</span>
+                        <strong>Future: AI back-office</strong>
+                        <span>The operating system for service businesses</span>
                     </div>
                 </div>
             </div>
@@ -1523,40 +1601,70 @@
 <section class="investors">
     <div class="investors-inner">
         <div class="section-header reveal">
-            <span class="section-eyebrow">Why Prodway</span>
-            <h2>Built different</h2>
-            <p>We're not just building software — we're running a consulting practice on it.</p>
+            <span class="section-eyebrow">Why We Win</span>
+            <h2>Our unfair advantage</h2>
+            <p>Three compounding moats that make this hard to replicate.</p>
         </div>
 
         <div class="investors-grid">
             <div class="investor-card reveal">
                 <div class="investor-card-icon green">
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                 </div>
-                <h3>Battle-tested</h3>
-                <p>Every feature exists because we needed it. $50k+ in projects delivered using these exact tools.</p>
+                <h3>Discovery Engine</h3>
+                <p>We do the engineering work. We see real workflows failing — repeatedly — before building anything. No surveys, no guessing.</p>
             </div>
 
             <div class="investor-card reveal">
                 <div class="investor-card-icon purple">
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                     </svg>
                 </div>
-                <h3>Fast delivery</h3>
-                <p>Short contracts, quick turnaround. Infrastructure, features, and updates shipped in days, not months.</p>
+                <h3>Embedded in Daily Work</h3>
+                <p>Our tools live where work happens — Slack, Chrome, docs. No new habits to form, no context switching.</p>
             </div>
 
             <div class="investor-card reveal">
                 <div class="investor-card-icon amber">
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
                     </svg>
                 </div>
-                <h3>No lock-in</h3>
-                <p>Free to start. Your data stays yours. Cancel anytime. We win by being useful, not by trapping you.</p>
+                <h3>Proprietary Workflow Data</h3>
+                <p>Every engagement gives us unique insight into how startups actually operate. That data compounds over time.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ TEAM ============ -->
+<section class="team">
+    <div class="team-inner">
+        <div class="section-header reveal">
+            <span class="section-eyebrow">Team</span>
+            <h2>Who's building this</h2>
+        </div>
+
+        <div class="team-card reveal">
+            <div class="team-avatar">DY</div>
+            <h3>Dale Yarborough</h3>
+            <div class="team-role">Founder & Engineer</div>
+            <p class="team-bio">
+                Former L5 SRE at Microsoft. Delivered $500K+ in consulting projects over 8 years. 
+                Built internal tools that became products. Now scaling that model.
+            </p>
+            <div class="team-links">
+                <a href="https://linkedin.com/in/dale-yarborough" target="_blank" rel="noopener noreferrer">
+                    <svg fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                    LinkedIn
+                </a>
+                <a href="mailto:dale@prodway.ai">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    dale@prodway.ai
+                </a>
             </div>
         </div>
     </div>
@@ -1566,8 +1674,8 @@
 <section id="contact" class="contact-section">
     <div class="contact-inner">
         <div class="contact-header reveal">
-            <h2>Let's talk about your project</h2>
-            <p>Tell us what you're building. We'll get back to you within 24 hours.</p>
+            <h2>Get in touch</h2>
+            <p>Need help with infrastructure? Want early access to our tools? We respond fast.</p>
         </div>
 
         <div class="contact-form reveal">
