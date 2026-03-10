@@ -1174,13 +1174,28 @@ def handle_sow_command(ack, command, respond, context):
             pass  # Don't fail SOW generation if tracking fails
 
         blocks = format_sow_for_slack(sow, sow_id)
-        respond(
-            {
-                "response_type": "in_channel",
-                "blocks": blocks,
-                "text": f"SOW Generated: {sow.get('title', 'Project Proposal')}",
-            }
-        )
+        
+        # Post as regular message so we can update it later
+        channel_id = command.get("channel_id")
+        try:
+            result = client.chat_postMessage(
+                channel=channel_id,
+                blocks=blocks,
+                text=f"SOW Generated: {sow.get('title', 'Project Proposal')}",
+            )
+            # Store message info for later updates
+            sow["_message_ts"] = result["ts"]
+            sow["_message_channel"] = result["channel"]
+            save_sow(sow_id, sow)
+        except Exception as post_err:
+            logger.warning(f"chat_postMessage failed, falling back to respond: {post_err}")
+            respond(
+                {
+                    "response_type": "in_channel",
+                    "blocks": blocks,
+                    "text": f"SOW Generated: {sow.get('title', 'Project Proposal')}",
+                }
+            )
 
     except Exception as e:
         logger.error(f"SOW generation failed: {e}")
@@ -1605,6 +1620,21 @@ def handle_edit_sow_submit(ack, body, client, view):
             mark_generation_edited(sow_id, edited_fields)
         except Exception:
             pass
+
+    # Update the original message with new content
+    message_ts = sow.get("_message_ts")
+    message_channel = sow.get("_message_channel")
+    if message_ts and message_channel:
+        try:
+            blocks = format_sow_for_slack(sow, sow_id)
+            client.chat_update(
+                channel=message_channel,
+                ts=message_ts,
+                blocks=blocks,
+                text=f"SOW Updated: {sow.get('title', 'Project Proposal')}",
+            )
+        except Exception as update_err:
+            logger.warning(f"Failed to update original message: {update_err}")
 
     total = sow.get("pricing", {}).get("total", 0)
     client.chat_postMessage(
