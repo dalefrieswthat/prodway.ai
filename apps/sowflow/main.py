@@ -320,6 +320,16 @@ def load_team_integrations(team_id: str) -> dict:
         return json.loads(path.read_text())
     return {}
 
+def _iter_team_integrations():
+    """Yield (team_id, integrations_dict) for all teams."""
+    for f in INTEGRATIONS_DIR.glob("*.json"):
+        try:
+            tid = f.stem
+            data = json.loads(f.read_text())
+            yield tid, data
+        except (json.JSONDecodeError, OSError):
+            continue
+
 
 def _refresh_docusign_token(team_id: str, refresh_token: str) -> dict | None:
     """Refresh an expired DocuSign access token. Returns new token data or None."""
@@ -390,6 +400,77 @@ def get_team_ai_config(team_id: str) -> dict | None:
         decrypted["api_key"] = _decrypt_api_key(ai["api_key"])
         return decrypted
     return None
+
+
+# Billing: free tier then $5/mo + $0.25/SOW over 25
+FREE_SOW_LIMIT = 5
+SUBSCRIPTION_INCLUDED_SOWS = 25
+
+
+def get_team_billing(team_id: str) -> dict:
+    return load_team_integrations(team_id)
+
+
+def set_team_billing(team_id: str, **kwargs) -> None:
+    save_team_integrations(team_id, kwargs)
+
+
+def get_sow_count_this_month(team_id: str) -> int:
+    now = datetime.now()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    count = 0
+    for f in (DATA_DIR / "sows").glob("*.json"):
+        try:
+            sow = json.loads(f.read_text())
+            if sow.get("_team_id") != team_id:
+                continue
+            created = sow.get("created_at")
+            if not created:
+                continue
+            dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+            if dt.tzinfo:
+                dt = dt.replace(tzinfo=None)
+            if dt >= month_start:
+                count += 1
+        except (json.JSONDecodeError, ValueError):
+            continue
+    return count
+
+
+def can_team_generate_sow(team_id: str) -> tuple[bool, str]:
+    billing = get_team_billing(team_id)
+    sub_status = (billing.get("stripe_subscription_status") or "").lower()
+    if sub_status == "active":
+        return True, ""
+    count = get_sow_count_this_month(team_id)
+    if count < FREE_SOW_LIMIT:
+        return True, ""
+    return False, (
+        f"You've used your {FREE_SOW_LIMIT} free SOWs this month. "
+        f"<{APP_URL}/api/billing/checkout?team_id={team_id}|Upgrade to Prodway> to keep generating ($5/mo, 25 SOWs included, $0.25 each after)."
+    )
+
+
+def report_sow_usage(team_id: str) -> None:
+    if not STRIPE_SECRET_KEY or not STRIPE_PRICE_USAGE_ID:
+        return
+    billing = get_team_billing(team_id)
+    if (billing.get("stripe_subscription_status") or "").lower() != "active":
+        return
+    usage_item_id = billing.get("stripe_subscription_usage_item_id")
+    if not usage_item_id:
+        return
+    count = get_sow_count_this_month(team_id)
+    if count <= SUBSCRIPTION_INCLUDED_SOWS:
+        return
+    try:
+        stripe.SubscriptionItem.create_usage_record(
+            usage_item_id,
+            quantity=1,
+            action="increment",
+        )
+    except stripe.error.StripeError as e:
+        logger.warning(f"Stripe usage report failed for team {team_id}: {e}")
 
 
 _team_ai_clients: dict[str, tuple] = {}  # (client, timestamp, provider)
@@ -1153,7 +1234,7 @@ def handle_sow_command(ack, command, respond, context):
                 "response_type": "ephemeral",
                 "text": (
                     "Usage: `/sow config ai-key sk-ant-...`\n"
-                    "Get your key at <https://console.anthropic.com|console.anthropic.com>"
+                    "Get your key at <https://platform.claude.com/login?returnTo=%2Fsettings%2Fkeys|platform.claude.com/settings/keys>"
                 ),
             })
             return
@@ -1231,7 +1312,12 @@ def handle_sow_command(ack, command, respond, context):
         respond({"response_type": "ephemeral", "text": text})
         return
 
-    # Generate SOW
+    # Generate SOW — check billing limit
+    allowed, limit_msg = can_team_generate_sow(team_id)
+    if not allowed:
+        respond({"response_type": "ephemeral", "text": limit_msg})
+        return
+
     respond(
         {
             "response_type": "ephemeral",
@@ -1257,6 +1343,11 @@ def handle_sow_command(ack, command, respond, context):
             save_generation_metadata(sow_id, team_id, ai_response, gen_time_ms)
         except Exception:
             pass  # Don't fail SOW generation if tracking fails
+
+        try:
+            report_sow_usage(team_id)
+        except Exception:
+            pass
 
         blocks = format_sow_for_slack(sow, sow_id)
         
@@ -1806,7 +1897,7 @@ def handle_configure_ai(ack, body, client, context):
                 },
                 "hint": {
                     "type": "plain_text",
-                    "text": "Get your key from console.anthropic.com",
+                    "text": "Get your key from platform.claude.com/settings/keys",
                 },
             },
         ],
@@ -1973,6 +2064,17 @@ def handle_app_home(client, event, context):
         ai_status_text = "Prodway default"
         ai_button_text = "Add your key"
 
+    # Billing: SOW subscription ($5/mo, 25 included, then $0.25 each)
+    billing = get_team_billing(team_id)
+    sub_active = (billing.get("stripe_subscription_status") or "").lower() == "active"
+    if sub_active:
+        billing_status = "✅ Subscribed ($5/mo, 25 SOWs included)"
+        billing_button = {"text": {"type": "plain_text", "text": "Manage billing"}, "url": f"{APP_URL}/api/billing/portal?team_id={team_id}"}
+    else:
+        count = get_sow_count_this_month(team_id)
+        billing_status = f"Free ({count}/{FREE_SOW_LIMIT} SOWs this month)"
+        billing_button = {"text": {"type": "plain_text", "text": "Upgrade"}, "url": f"{APP_URL}/api/billing/checkout?team_id={team_id}"}
+
     blocks = [
         {
             "type": "header",
@@ -1998,7 +2100,10 @@ def handle_app_home(client, event, context):
                     "*🔌 Integrations*\n"
                     f"• 📝 DocuSign: {ds_status}\n"
                     f"• 💳 Stripe: {stripe_status}\n"
-                    f"• 🤖 AI: {ai_status_text}\n\n"
+                    f"• 🤖 AI: {ai_status_text}\
+"
+                    f"• 📋 Billing: {billing_status}\
+\n"
                     "_Connect your accounts to send SOWs for e-signature "
                     "and automatically invoice clients._"
                 ),
@@ -2012,6 +2117,11 @@ def handle_app_home(client, event, context):
                     "text": {"type": "plain_text", "text": ai_button_text},
                     "action_id": "configure_ai",
                     "style": "primary" if ai_button_text == "Add your key" else None,
+                },
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Manage billing" if sub_active else "Upgrade"},
+                    "url": f"{APP_URL}/api/billing/portal?team_id={team_id}" if sub_active else f"{APP_URL}/api/billing/checkout?team_id={team_id}",
                 },
             ],
         },
@@ -2838,9 +2948,73 @@ async def connect_stripe_callback(code: str = "", state: str = ""):
         )
 
 
+# --- Billing: SOW subscription (/mo + --.25/SOW over 25) ---
+
+def _create_billing_checkout_session(team_id: str):
+    if not STRIPE_SECRET_KEY or not STRIPE_PRICE_BASE_ID or not STRIPE_PRICE_USAGE_ID:
+        return None
+    line_items = [
+        {"price": STRIPE_PRICE_BASE_ID, "quantity": 1},
+        {"price": STRIPE_PRICE_USAGE_ID, "quantity": 0},
+    ]
+    session = stripe.checkout.Session.create(
+        mode="subscription",
+        line_items=line_items,
+        client_reference_id=team_id,
+        success_url=f"{APP_URL}/api/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{APP_URL}/api/billing/cancel",
+        subscription_data={"metadata": {"team_id": team_id}},
+    )
+    return session.url
+
+@api.get("/api/billing/checkout")
+async def billing_checkout(team_id: str = ""):
+    from fastapi.responses import RedirectResponse
+    if not team_id:
+        return HTMLResponse(content="<h1>Missing team_id</h1>", status_code=400)
+    url = _create_billing_checkout_session(team_id)
+    if not url:
+        return HTMLResponse(content="<h1>Billing not configured</h1>", status_code=503)
+    return RedirectResponse(url=url, status_code=302)
+
+@api.get("/api/billing/success")
+async def billing_success(session_id: str = ""):
+    return HTMLResponse(content=(
+        "<html><body style='font-family:system-ui;text-align:center;padding:80px;background:#f8f9fa'>"
+        "<div style='max-width:500px;margin:0 auto;background:white;padding:40px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1)'>"
+        "<h1 style='color:#22c55e'>You're subscribed</h1>"
+        "<p style='color:#666'>Close this window and return to Slack. 25 SOWs/mo included, then $0.25 each.</p>"
+        "</div></body></html>"
+    ))
+
+@api.get("/api/billing/cancel")
+async def billing_cancel():
+    return HTMLResponse(content=(
+        "<html><body style='font-family:system-ui;text-align:center;padding:80px;background:#f8f9fa'>"
+        "<div style='max-width:500px;margin:0 auto;background:white;padding:40px;border-radius:12px'>"
+        "<h1>Cancelled</h1><p>You can close this window.</p></div></body></html>"
+    ))
+
+@api.get("/api/billing/portal")
+async def billing_portal(team_id: str = ""):
+    from fastapi.responses import RedirectResponse
+    if not team_id or not STRIPE_SECRET_KEY:
+        return HTMLResponse(content="<h1>Missing team_id or Stripe not configured</h1>", status_code=400)
+    billing = get_team_billing(team_id)
+    customer_id = billing.get("stripe_billing_customer_id")
+    if not customer_id:
+        return HTMLResponse(content="<h1>No billing account. Upgrade first from the Slack app.</h1>", status_code=400)
+    try:
+        session = stripe.billing_portal.Session.create(
+            customer=customer_id,
+            return_url=f"{APP_URL}/api/billing/success",
+        )
+        return RedirectResponse(url=session.url, status_code=302)
+    except stripe.error.StripeError as e:
+        logger.warning(f"Portal session failed: {e}")
+        return HTMLResponse(content="<h1>Could not open billing portal</h1>", status_code=500)
+
 # --- BYOK: AI Key Configuration (API) ---
-
-
 
 
 
@@ -2993,7 +3167,44 @@ async def stripe_webhook(req: Request):
 
     elif event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        logger.info(f"Payment completed: {session['id']}")
+        logger.info(f"Checkout completed: {session['id']}")
+        if session.get("mode") == "subscription" and session.get("subscription"):
+            team_id = session.get("client_reference_id") or session.get("metadata", {}).get("team_id")
+            if team_id:
+                sub_id = session["subscription"]
+                customer_id = session.get("customer")
+                try:
+                    sub = stripe.Subscription.retrieve(sub_id, expand=["items.data.price"])
+                    usage_item_id = None
+                    for item in sub.get("items", {}).get("data", []):
+                        if item.get("price", {}).get("id") == STRIPE_PRICE_USAGE_ID:
+                            usage_item_id = item["id"]
+                            break
+                    set_team_billing(team_id,
+                        stripe_billing_customer_id=customer_id,
+                        stripe_subscription_id=sub_id,
+                        stripe_subscription_status=sub.get("status", "active"),
+                        stripe_subscription_usage_item_id=usage_item_id or "",
+                    )
+                    logger.info(f"Billing linked for team {team_id}: sub {sub_id}")
+                except stripe.error.StripeError as e:
+                    logger.warning(f"Failed to link subscription to team {team_id}: {e}")
+
+    elif event["type"] == "customer.subscription.updated":
+        sub = event["data"]["object"]
+        sub_id = sub["id"]
+        for tid, data in _iter_team_integrations():
+            if data.get("stripe_subscription_id") == sub_id:
+                set_team_billing(tid, stripe_subscription_status=sub.get("status", ""))
+                break
+
+    elif event["type"] == "customer.subscription.deleted":
+        sub = event["data"]["object"]
+        sub_id = sub["id"]
+        for tid, data in _iter_team_integrations():
+            if data.get("stripe_subscription_id") == sub_id:
+                set_team_billing(tid, stripe_subscription_status="canceled")
+                break
 
     return {"status": "ok"}
 

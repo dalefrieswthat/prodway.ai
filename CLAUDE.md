@@ -16,7 +16,7 @@ Run `mcp__grepika__index` first if results seem stale.
 
 ## Repo Layout
 - `apps/sowflow/` - SowFlow API (FastAPI, Slack Bolt OAuth, Claude, DocuSign, Stripe)
-- `apps/formpilot/` - Chrome extension (Manifest V3)
+- `apps/formpilot/` - Chrome extension (Manifest V3). Version in `manifest.json` is bumped automatically (patch) when you commit changes under `apps/formpilot/` via pre-commit; run `git add apps/formpilot/manifest.json` and commit again if the hook reports "files were modified".
 - `apps/web/static-deploy/` - Landing page (GitHub Pages -> prodway.ai)
 - `cursor-context/` - Specs, investor docs, setup guides (see README.md inside)
 - `k8s/base/` - Kubernetes manifests (future)

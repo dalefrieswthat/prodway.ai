@@ -15,7 +15,7 @@ APP_URL=https://api.prodway.ai
 #   Cost: ~$0.075/1M tokens (very cheap)
 #
 # ANTHROPIC_API_KEY: Claude (higher quality, used for BYOK)
-#   Get from: https://console.anthropic.com
+#   Get from: https://platform.claude.com/settings/keys
 #   Cost: ~$3/1M input, $15/1M output (more expensive)
 #
 # DEFAULT_AI_PROVIDER: Which to use when both are set
@@ -57,6 +57,9 @@ SLACK_SIGNING_SECRET=
 STRIPE_SECRET_KEY=
 STRIPE_CLIENT_ID=
 STRIPE_WEBHOOK_SECRET=
+# Billing: create Product "Prodway SOW" with $5/mo + $0.25/unit metered prices, copy Price IDs here
+STRIPE_PRICE_BASE_ID=
+STRIPE_PRICE_USAGE_ID=
 
 # --------------------------------------------
 # 4. DOCUSIGN (Per-customer e-signatures)
