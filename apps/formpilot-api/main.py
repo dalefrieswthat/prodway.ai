@@ -10,9 +10,12 @@ import re
 from typing import Any
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+# SowFlow API for key validation (same billing system)
+SOWFLOW_API_URL = os.environ.get("SOWFLOW_API_URL", "https://dynamic-transformation-production.up.railway.app")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,6 +48,61 @@ def _get_ai_provider() -> str:
     if anthropic_key:
         return "anthropic"
     return "none"
+
+# API key validation cache (team_id -> expiry_time)
+_key_cache: dict[str, tuple[str, float]] = {}  # api_key -> (team_id, expiry_timestamp)
+_KEY_CACHE_TTL = 300  # 5 minutes
+
+
+async def validate_subscription(x_api_key: str = Header(None, alias="X-API-Key"), authorization: str = Header(None)):
+    """
+    Validate API key against SowFlow billing system.
+    Accepts either X-API-Key header or Authorization: Bearer <key>.
+    """
+    import time
+    
+    api_key = x_api_key
+    if not api_key and authorization and authorization.startswith("Bearer "):
+        api_key = authorization[7:]
+    
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing API key. Get your key from the SowFlow app in Slack.")
+    
+    # Check cache first
+    now = time.time()
+    if api_key in _key_cache:
+        team_id, expiry = _key_cache[api_key]
+        if now < expiry:
+            return {"team_id": team_id, "api_key": api_key}
+    
+    # Validate against SowFlow API
+    try:
+        resp = httpx.get(
+            f"{SOWFLOW_API_URL}/api/validate-key",
+            headers={"X-API-Key": api_key},
+            timeout=10
+        )
+        if resp.status_code == 401:
+            raise HTTPException(status_code=401, detail="Invalid API key. Get your key from the SowFlow app in Slack.")
+        resp.raise_for_status()
+        data = resp.json()
+        
+        if not data.get("subscribed"):
+            raise HTTPException(
+                status_code=402,
+                detail="Subscription required. Subscribe at prodway.ai to use FormPilot."
+            )
+        
+        team_id = data.get("team_id", "")
+        _key_cache[api_key] = (team_id, now + _KEY_CACHE_TTL)
+        return {"team_id": team_id, "api_key": api_key}
+    except httpx.RequestError as e:
+        logger.warning(f"SowFlow API unreachable: {e}")
+        # Fail open during outage if key looks valid (starts with pw_)
+        if api_key.startswith("pw_"):
+            return {"team_id": "unknown", "api_key": api_key}
+        raise HTTPException(status_code=503, detail="Billing service temporarily unavailable")
+
 
 app = FastAPI(
     title="FormPilot API",
@@ -294,9 +352,10 @@ Only include fields where you have a valid, appropriate value. Omit fields rathe
 
 
 @app.post("/formpilot/suggest-mappings", response_model=SuggestMappingsResponse)
-async def suggest_mappings(body: SuggestMappingsRequest) -> SuggestMappingsResponse:
+async def suggest_mappings(body: SuggestMappingsRequest, auth: dict = Depends(validate_subscription)) -> SuggestMappingsResponse:
     """
     Suggest mappings from company profile to form fields.
+    Requires valid Prodway API key with active subscription.
     Uses Gemini (cheap default) or Anthropic (fallback).
     """
     provider = _get_ai_provider()
@@ -370,9 +429,10 @@ async def suggest_mappings(body: SuggestMappingsRequest) -> SuggestMappingsRespo
 
 
 @app.post("/formpilot/suggest-field")
-async def suggest_field(body: SuggestFieldRequest) -> dict:
+async def suggest_field(body: SuggestFieldRequest, auth: dict = Depends(validate_subscription)) -> dict:
     """
     Suggest a value for a single field using minimal tokens.
+    Requires valid Prodway API key with active subscription.
     Uses Gemini (cheap default) or Anthropic (fallback).
     """
     provider = _get_ai_provider()
@@ -472,7 +532,7 @@ def _strip_html(html: str) -> str:
 
 
 @app.post("/formpilot/import-from-url")
-async def import_from_url(body: ImportFromUrlRequest) -> dict:
+async def import_from_url(body: ImportFromUrlRequest, auth: dict = Depends(validate_subscription)) -> dict:
     """
     Fetch URL (e.g. LinkedIn company page), extract text, use AI to extract
     structured profile + company context. Returns { profile, context } for extension.

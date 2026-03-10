@@ -518,6 +518,39 @@ def report_sow_usage(team_id: str) -> None:
         logger.warning(f"Stripe usage report failed for team {team_id}: {e}")
 
 
+def get_team_api_key(team_id: str) -> str | None:
+    """Get the team's Prodway API key (for FormPilot, etc.)."""
+    integrations = load_team_integrations(team_id)
+    return integrations.get("prodway_api_key")
+
+
+def generate_team_api_key(team_id: str) -> str:
+    """Generate a new Prodway API key for a team. Overwrites existing."""
+    api_key = f"pw_{secrets.token_urlsafe(32)}"
+    save_team_integrations(team_id, {"prodway_api_key": api_key})
+    return api_key
+
+
+def get_team_by_api_key(api_key: str) -> str | None:
+    """Look up team_id from a Prodway API key. Returns None if not found."""
+    if not api_key or not api_key.startswith("pw_"):
+        return None
+    for f in (DATA_DIR / "integrations").glob("*.json"):
+        try:
+            data = json.loads(f.read_text())
+            if data.get("prodway_api_key") == api_key:
+                return f.stem  # filename is team_id.json
+        except (json.JSONDecodeError, IOError):
+            continue
+    return None
+
+
+def is_team_subscribed(team_id: str) -> bool:
+    """Check if a team has an active subscription."""
+    billing = get_team_billing(team_id)
+    return (billing.get("stripe_subscription_status") or "").lower() == "active"
+
+
 _team_ai_clients: dict[str, tuple] = {}  # (client, timestamp, provider)
 _AI_CLIENT_TTL = 300  # 5 min — refresh if team rotates their key
 
@@ -1743,6 +1776,16 @@ def handle_edit_sow(ack, body, client):
     if not sow:
         return
 
+    team_id = sow.get("_team_id") or body.get("team", {}).get("id", "")
+    if not is_team_subscribed(team_id):
+        user_id = body["user"]["id"]
+        client.chat_postEphemeral(
+            channel=body["channel"]["id"],
+            user=user_id,
+            text=f"Editing SOWs requires an active subscription. <{APP_URL}/api/billing/checkout?team_id={team_id}|Subscribe now> — $5/mo, includes SowFlow + FormPilot."
+        )
+        return
+
     client.views_open(
         trigger_id=body["trigger_id"],
         view={
@@ -2016,6 +2059,70 @@ def handle_remove_ai_key(ack, body, client, context):
     )
 
 
+@bolt_app.action("generate_api_key")
+def handle_generate_api_key(ack, body, client, context):
+    """Generate a new Prodway API key for FormPilot."""
+    ack()
+    team_id = context.get("team_id", "")
+    user_id = body["user"]["id"]
+    
+    if not is_team_subscribed(team_id):
+        client.chat_postEphemeral(
+            channel=user_id,
+            user=user_id,
+            text=f"API keys require an active subscription. <{APP_URL}/api/billing/checkout?team_id={team_id}|Subscribe now>"
+        )
+        return
+    
+    api_key = generate_team_api_key(team_id)
+    _audit_log(team_id, user_id, "api_key_generated", {})
+    
+    client.chat_postMessage(
+        channel=user_id,
+        text=(
+            f"🔑 *Your Prodway API Key*\n\n"
+            f"`{api_key}`\n\n"
+            f"Copy this key into FormPilot Chrome extension settings.\n"
+            f"_Keep this secret. You can regenerate it anytime from the SowFlow App Home._"
+        )
+    )
+    
+    # Refresh App Home
+    handle_app_home(client, {"user": user_id}, context)
+
+
+@bolt_app.action("regenerate_api_key")
+def handle_regenerate_api_key(ack, body, client, context):
+    """Regenerate the team's Prodway API key."""
+    ack()
+    team_id = context.get("team_id", "")
+    user_id = body["user"]["id"]
+    
+    if not is_team_subscribed(team_id):
+        client.chat_postEphemeral(
+            channel=user_id,
+            user=user_id,
+            text=f"API keys require an active subscription. <{APP_URL}/api/billing/checkout?team_id={team_id}|Subscribe now>"
+        )
+        return
+    
+    api_key = generate_team_api_key(team_id)
+    _audit_log(team_id, user_id, "api_key_regenerated", {})
+    
+    client.chat_postMessage(
+        channel=user_id,
+        text=(
+            f"🔑 *Your New Prodway API Key*\n\n"
+            f"`{api_key}`\n\n"
+            f"Your old key has been invalidated. Update FormPilot with this new key.\n"
+            f"_Keep this secret._"
+        )
+    )
+    
+    # Refresh App Home
+    handle_app_home(client, {"user": user_id}, context)
+
+
 @bolt_app.view("ai_config_modal")
 def handle_ai_config_submit(ack, body, client, view):
     """Validate and save AI config from modal submission."""
@@ -2170,25 +2277,41 @@ def handle_app_home(client, event, context):
                 },
             ],
         },
-        {"type": "divider"},
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": (
-                    "*Commands:*\n"
-                    "• `/sow Need K8s migration, 50k users, 6 weeks` — Generate SOW\n"
-                    "• `/sow list` — View your SOWs\n"
-                    "• `/sow view [id]` — View a specific SOW\n\n"
-                    "*How it works:*\n"
-                    "1️⃣ `/sow` → AI generates a complete SOW\n"
-                    "2️⃣ Review, edit, and click Send\n"
-                    "3️⃣ Client receives SOW via DocuSign to approve or deny\n"
-                    "4️⃣ On signature → Stripe invoice sent automatically"
-                ),
-            },
-        },
     ]
+
+    # FormPilot API Key section (only show if subscribed)
+    if sub_active:
+        api_key = get_team_api_key(team_id)
+        if api_key:
+            masked_key = api_key[:7] + "..." + api_key[-4:]
+            api_key_text = f"*🔑 FormPilot API Key*\nYour key: `{masked_key}`\n_Copy this key into the FormPilot Chrome extension settings._"
+            api_key_button = {"type": "button", "text": {"type": "plain_text", "text": "Regenerate key"}, "action_id": "regenerate_api_key", "confirm": {"title": {"type": "plain_text", "text": "Regenerate API Key?"}, "text": {"type": "mrkdwn", "text": "This will invalidate your current key. You'll need to update the key in FormPilot."}, "confirm": {"type": "plain_text", "text": "Regenerate"}, "deny": {"type": "plain_text", "text": "Cancel"}}}
+        else:
+            api_key_text = "*🔑 FormPilot API Key*\nNo key generated yet."
+            api_key_button = {"type": "button", "text": {"type": "plain_text", "text": "Generate key"}, "action_id": "generate_api_key", "style": "primary"}
+        
+        blocks.append({"type": "divider"})
+        blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": api_key_text}})
+        blocks.append({"type": "actions", "elements": [api_key_button]})
+
+    blocks.append({"type": "divider"})
+    blocks.append({
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": (
+                "*Commands:*\n"
+                "• `/sow Need K8s migration, 50k users, 6 weeks` — Generate SOW\n"
+                "• `/sow list` — View your SOWs\n"
+                "• `/sow view [id]` — View a specific SOW\n\n"
+                "*How it works:*\n"
+                "1️⃣ `/sow` → AI generates a complete SOW\n"
+                "2️⃣ Review, edit, and click Send\n"
+                "3️⃣ Client receives SOW via DocuSign to approve or deny\n"
+                "4️⃣ On signature → Stripe invoice sent automatically"
+            ),
+        },
+    })
 
     # Show recent SOWs for this team
     recent = list_sows(team_id)[:5]
@@ -3033,6 +3156,27 @@ async def billing_success(session_id: str = ""):
 async def billing_cancel():
     body = '<h1>Checkout cancelled</h1><p>No charge was made. You can close this window or return to Slack to try again later.</p>'
     return HTMLResponse(content=_branded_page("Cancelled", body, "Back to prodway.ai", LANDING_URL))
+
+@api.get("/api/validate-key")
+async def validate_api_key(request: Request):
+    """Validate a Prodway API key and return subscription status. Used by FormPilot API."""
+    auth_header = request.headers.get("Authorization", "")
+    api_key = ""
+    if auth_header.startswith("Bearer "):
+        api_key = auth_header[7:]
+    if not api_key:
+        api_key = request.headers.get("X-API-Key", "")
+    
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing API key")
+    
+    team_id = get_team_by_api_key(api_key)
+    if not team_id:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    
+    subscribed = is_team_subscribed(team_id)
+    return {"valid": True, "team_id": team_id, "subscribed": subscribed}
+
 
 @api.get("/api/billing/portal")
 async def billing_portal(team_id: str = ""):
