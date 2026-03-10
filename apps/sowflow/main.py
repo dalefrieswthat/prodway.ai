@@ -3213,28 +3213,34 @@ async def signup_page():
     if not STRIPE_SECRET_KEY or not STRIPE_PRICE_BASE_ID:
         return HTMLResponse(content=_branded_page("Signup", "<p>Billing is not configured yet. Please try again later.</p>"), status_code=503)
     
-    # Create Stripe checkout for new signup (no team_id yet)
-    line_items = [{"price": STRIPE_PRICE_BASE_ID, "quantity": 1}]
-    if STRIPE_PRICE_USAGE_ID:
-        line_items.append({"price": STRIPE_PRICE_USAGE_ID})
-    
-    session = stripe.checkout.Session.create(
-        payment_method_types=["card"],
-        line_items=line_items,
-        mode="subscription",
-        client_reference_id=signup_token,
-        success_url=f"{APP_URL}/signup/connect-slack?token={signup_token}",
-        cancel_url=f"{LANDING_URL}?cancelled=true",
-        subscription_data={"metadata": {"signup_token": signup_token}},
-    )
-    
-    _pending_signups[signup_token] = {
-        "stripe_session_id": session.id,
-        "created_at": datetime.now().isoformat(),
-    }
-    
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url=session.url, status_code=302)
+    try:
+        # Create Stripe checkout for new signup (no team_id yet)
+        # Only include the base price - metered usage is added to subscription separately
+        line_items = [{"price": STRIPE_PRICE_BASE_ID, "quantity": 1}]
+        
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=line_items,
+            mode="subscription",
+            client_reference_id=signup_token,
+            success_url=f"{APP_URL}/signup/connect-slack?token={signup_token}",
+            cancel_url=f"{LANDING_URL}?cancelled=true",
+            subscription_data={"metadata": {"signup_token": signup_token}},
+        )
+        
+        _pending_signups[signup_token] = {
+            "stripe_session_id": session.id,
+            "created_at": datetime.now().isoformat(),
+        }
+        
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=session.url, status_code=302)
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe checkout creation failed: {e}")
+        return HTMLResponse(content=_branded_page("Error", f"<p>Could not start checkout: {str(e)}</p>"), status_code=500)
+    except Exception as e:
+        logger.error(f"Signup failed: {e}")
+        return HTMLResponse(content=_branded_page("Error", f"<p>Something went wrong. Please try again.</p>"), status_code=500)
 
 
 @api.get("/signup/connect-slack")
