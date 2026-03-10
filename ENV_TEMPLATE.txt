@@ -26,6 +26,15 @@ ANTHROPIC_API_KEY=
 DEFAULT_AI_PROVIDER=gemini
 
 # --------------------------------------------
+# 1.5. SECURITY (Required for production)
+#
+# ENCRYPTION_KEY: Encrypts API keys at rest (Fernet)
+#   Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+#   IMPORTANT: Store this securely. Losing it means losing access to encrypted keys.
+# --------------------------------------------
+ENCRYPTION_KEY=
+
+# --------------------------------------------
 # 2. SLACK — Marketplace Distribution (Required)
 # Your Slack app at: https://api.slack.com/apps
 #

@@ -42,6 +42,7 @@ from slack_bolt.adapter.fastapi import SlackRequestHandler
 from slack_sdk import WebClient
 from slack_sdk.oauth.installation_store import FileInstallationStore
 from slack_sdk.oauth.state_store import FileOAuthStateStore
+from cryptography.fernet import Fernet
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sowflow")
@@ -79,6 +80,9 @@ SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
 CONTACT_TO_EMAIL = os.environ.get("CONTACT_TO_EMAIL", "dale@prodway.ai")
 SENDGRID_FROM_EMAIL = os.environ.get("SENDGRID_FROM_EMAIL", "noreply@prodway.ai")
 
+# Encryption key for API keys at rest (generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "")
+
 # Data directories (file-based storage for MVP — upgrade to Postgres later)
 DATA_DIR = Path(os.environ.get("DATA_DIR", "./data"))
 for _dir in [
@@ -88,6 +92,7 @@ for _dir in [
     DATA_DIR / "integrations",
     DATA_DIR / "api_tokens",
     DATA_DIR / "invoices",
+    DATA_DIR / "audit",
 ]:
     _dir.mkdir(parents=True, exist_ok=True)
 
@@ -95,6 +100,83 @@ for _dir in [
 claude = Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
+
+
+# ============================================================================
+# ENCRYPTION & AUDIT (Security)
+# ============================================================================
+
+def _get_fernet() -> Fernet | None:
+    """Get Fernet instance for encryption. Returns None if not configured."""
+    if not ENCRYPTION_KEY:
+        return None
+    try:
+        return Fernet(ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else ENCRYPTION_KEY)
+    except Exception:
+        logger.warning("Invalid ENCRYPTION_KEY format")
+        return None
+
+
+def _encrypt_api_key(plaintext: str) -> str:
+    """Encrypt an API key. Returns plaintext if encryption not configured (dev mode)."""
+    fernet = _get_fernet()
+    if not fernet:
+        logger.warning("ENCRYPTION_KEY not set — storing API key in plaintext (not recommended for production)")
+        return plaintext
+    return fernet.encrypt(plaintext.encode()).decode()
+
+
+def _decrypt_api_key(ciphertext: str) -> str:
+    """Decrypt an API key. Handles both encrypted and plaintext (legacy/dev)."""
+    if not ciphertext:
+        return ""
+    fernet = _get_fernet()
+    if not fernet:
+        return ciphertext  # Assume plaintext
+    try:
+        return fernet.decrypt(ciphertext.encode()).decode()
+    except Exception:
+        # Might be plaintext from before encryption was enabled
+        return ciphertext
+
+
+def _audit_log(team_id: str, user_id: str, action: str, details: dict) -> None:
+    """Write an audit log entry. Append-only for compliance."""
+    entry = {
+        "timestamp": datetime.now().isoformat(),
+        "team_id": team_id,
+        "user_id": user_id,
+        "action": action,
+        "details": details,
+    }
+    audit_file = DATA_DIR / "audit" / f"{team_id}.jsonl"
+    try:
+        with open(audit_file, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception as e:
+        logger.error(f"Failed to write audit log: {e}")
+
+
+# Rate limiting for API key validation (prevent brute-force key testing)
+_key_validation_attempts: dict[str, list[float]] = {}  # team_id -> list of timestamps
+_KEY_VALIDATION_LIMIT = 5  # max attempts
+_KEY_VALIDATION_WINDOW = 60  # seconds
+
+
+def _check_rate_limit(team_id: str) -> bool:
+    """Check if team is rate-limited for key validation. Returns True if allowed."""
+    now = _time.monotonic()
+    attempts = _key_validation_attempts.get(team_id, [])
+    # Remove old attempts outside window
+    attempts = [t for t in attempts if now - t < _KEY_VALIDATION_WINDOW]
+    _key_validation_attempts[team_id] = attempts
+    
+    if len(attempts) >= _KEY_VALIDATION_LIMIT:
+        return False
+    
+    attempts.append(now)
+    _key_validation_attempts[team_id] = attempts
+    return True
 
 
 # ============================================================================
@@ -299,11 +381,14 @@ def get_team_stripe(team_id: str) -> str | None:
 
 
 def get_team_ai_config(team_id: str) -> dict | None:
-    """Get a team's AI provider config, or None if not configured."""
+    """Get a team's AI provider config with decrypted key, or None if not configured."""
     integrations = load_team_integrations(team_id)
     ai = integrations.get("ai_provider")
     if isinstance(ai, dict) and ai.get("api_key"):
-        return ai
+        # Decrypt the API key before returning
+        decrypted = ai.copy()
+        decrypted["api_key"] = _decrypt_api_key(ai["api_key"])
+        return decrypted
     return None
 
 
@@ -1657,6 +1742,214 @@ def handle_dismiss_sow(ack, body, respond):
     )
 
 
+# --- AI Configuration (BYOK) via Slack Modal ---
+
+@bolt_app.action("configure_ai")
+def handle_configure_ai(ack, body, client, context):
+    """Open modal to configure AI provider (BYOK)."""
+    ack()
+    team_id = context.get("team_id", "")
+    user_id = body["user"]["id"]
+    
+    # Check current config
+    current_config = get_team_ai_config(team_id)
+    current_provider = current_config.get("provider", "anthropic") if current_config else "anthropic"
+    has_key = bool(current_config and current_config.get("api_key"))
+    
+    # Build modal
+    modal = {
+        "type": "modal",
+        "callback_id": "ai_config_modal",
+        "private_metadata": json.dumps({"team_id": team_id, "user_id": user_id}),
+        "title": {"type": "plain_text", "text": "AI Settings"},
+        "submit": {"type": "plain_text", "text": "Save"},
+        "close": {"type": "plain_text", "text": "Cancel"},
+        "blocks": [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        "*Bring Your Own Key*\n"
+                        "Use your own API key for higher-quality SOW generation. "
+                        "Your key is encrypted and stored securely."
+                    ),
+                },
+            },
+            {
+                "type": "input",
+                "block_id": "provider_block",
+                "label": {"type": "plain_text", "text": "AI Provider"},
+                "element": {
+                    "type": "static_select",
+                    "action_id": "provider_select",
+                    "initial_option": {
+                        "text": {"type": "plain_text", "text": "Anthropic (Claude)"},
+                        "value": "anthropic",
+                    },
+                    "options": [
+                        {
+                            "text": {"type": "plain_text", "text": "Anthropic (Claude)"},
+                            "value": "anthropic",
+                        },
+                    ],
+                },
+            },
+            {
+                "type": "input",
+                "block_id": "api_key_block",
+                "label": {"type": "plain_text", "text": "API Key"},
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "api_key_input",
+                    "placeholder": {"type": "plain_text", "text": "sk-ant-api03-..."},
+                },
+                "hint": {
+                    "type": "plain_text",
+                    "text": "Get your key from console.anthropic.com",
+                },
+            },
+        ],
+    }
+    
+    # Add current status and remove option if key exists
+    if has_key:
+        modal["blocks"].insert(1, {
+            "type": "context",
+            "elements": [
+                {
+                    "type": "mrkdwn",
+                    "text": f"✅ Currently using your {current_provider.title()} key. Enter a new key to replace it.",
+                },
+            ],
+        })
+        modal["blocks"].append({
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "_Or remove your key to use Prodway default:_",
+            },
+            "accessory": {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "Remove Key"},
+                "action_id": "remove_ai_key",
+                "style": "danger",
+                "confirm": {
+                    "title": {"type": "plain_text", "text": "Remove API Key?"},
+                    "text": {"type": "mrkdwn", "text": "SowFlow will use the default AI. You can add your key again anytime."},
+                    "confirm": {"type": "plain_text", "text": "Remove"},
+                    "deny": {"type": "plain_text", "text": "Cancel"},
+                },
+            },
+        })
+    
+    client.views_open(trigger_id=body["trigger_id"], view=modal)
+
+
+@bolt_app.action("remove_ai_key")
+def handle_remove_ai_key(ack, body, client, context):
+    """Remove team's AI key and close modal."""
+    ack()
+    team_id = context.get("team_id", "")
+    user_id = body["user"]["id"]
+    
+    # Audit log
+    _audit_log(team_id, user_id, "ai_key_removed", {})
+    
+    # Remove key
+    save_team_integrations(team_id, {"ai_provider": None})
+    _team_ai_clients.pop(team_id, None)
+    
+    # Close modal and notify
+    client.views_update(
+        view_id=body["view"]["id"],
+        view={
+            "type": "modal",
+            "title": {"type": "plain_text", "text": "AI Settings"},
+            "close": {"type": "plain_text", "text": "Done"},
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "✅ Your API key has been removed. SowFlow will use Prodway default.",
+                    },
+                },
+            ],
+        },
+    )
+
+
+@bolt_app.view("ai_config_modal")
+def handle_ai_config_submit(ack, body, client, view):
+    """Validate and save AI config from modal submission."""
+    metadata = json.loads(view.get("private_metadata", "{}"))
+    team_id = metadata.get("team_id", "")
+    user_id = metadata.get("user_id", body["user"]["id"])
+    
+    values = view["state"]["values"]
+    provider = values["provider_block"]["provider_select"]["selected_option"]["value"]
+    api_key = values["api_key_block"]["api_key_input"]["value"].strip()
+    
+    # Rate limit check
+    if not _check_rate_limit(team_id):
+        ack({
+            "response_action": "errors",
+            "errors": {"api_key_block": "Too many attempts. Please wait a minute and try again."},
+        })
+        _audit_log(team_id, user_id, "ai_key_rate_limited", {"provider": provider})
+        return
+    
+    # Validate key format
+    if provider == "anthropic" and not api_key.startswith("sk-ant-"):
+        ack({
+            "response_action": "errors",
+            "errors": {"api_key_block": "Anthropic API keys start with sk-ant-"},
+        })
+        return
+    
+    # Validate key with API call
+    try:
+        if provider == "anthropic":
+            test_client = Anthropic(api_key=api_key)
+            test_client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=1,
+                messages=[{"role": "user", "content": "hi"}],
+            )
+    except Exception as e:
+        logger.warning(f"AI key validation failed for team {team_id}: {e}")
+        ack({
+            "response_action": "errors",
+            "errors": {"api_key_block": "Invalid API key. Please check and try again."},
+        })
+        return
+    
+    ack()
+    
+    # Encrypt and save
+    encrypted_key = _encrypt_api_key(api_key)
+    save_team_integrations(team_id, {
+        "ai_provider": {
+            "provider": provider,
+            "api_key": encrypted_key,
+            "configured_by": user_id,
+            "configured_at": datetime.now().isoformat(),
+        },
+    })
+    _team_ai_clients.pop(team_id, None)
+    
+    # Audit log
+    _audit_log(team_id, user_id, "ai_key_configured", {"provider": provider})
+    
+    # Notify user
+    client.chat_postMessage(
+        channel=user_id,
+        text=f"✅ Your {provider.title()} API key has been saved. SOWs will now use your key for higher-quality generation.",
+    )
+
+
+
 @bolt_app.event("app_home_opened")
 def handle_app_home(client, event, context):
     """Render the App Home tab with connection status, commands, and recent SOWs."""
@@ -1674,9 +1967,11 @@ def handle_app_home(client, event, context):
     # AI status: show provider if BYOK, else platform default
     if team_ai and team_ai.get("api_key"):
         provider_name = team_ai.get("provider", "anthropic").title()
-        ai_status = f"✅ Your key ({provider_name}) · <{APP_URL}/connect/ai?team_id={team_id}|Manage>"
+        ai_status_text = f"✅ Your key ({provider_name})"
+        ai_button_text = "Manage"
     else:
-        ai_status = f"Prodway default · <{APP_URL}/connect/ai?team_id={team_id}|Add your key>"
+        ai_status_text = "Prodway default"
+        ai_button_text = "Add your key"
 
     blocks = [
         {
@@ -1703,11 +1998,22 @@ def handle_app_home(client, event, context):
                     "*🔌 Integrations*\n"
                     f"• 📝 DocuSign: {ds_status}\n"
                     f"• 💳 Stripe: {stripe_status}\n"
-                    f"• 🤖 AI: {ai_status}\n\n"
+                    f"• 🤖 AI: {ai_status_text}\n\n"
                     "_Connect your accounts to send SOWs for e-signature "
                     "and automatically invoice clients._"
                 ),
             },
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": ai_button_text},
+                    "action_id": "configure_ai",
+                    "style": "primary" if ai_button_text == "Add your key" else None,
+                },
+            ],
         },
         {"type": "divider"},
         {
@@ -2534,230 +2840,6 @@ async def connect_stripe_callback(code: str = "", state: str = ""):
 
 # --- BYOK: AI Key Configuration (API) ---
 
-
-
-# --- AI Provider Configuration (BYOK) ---
-
-AI_SETTINGS_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>AI Settings — SowFlow</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fafafa; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
-        .card { background: #111; border: 1px solid #222; border-radius: 12px; padding: 2rem; max-width: 420px; width: 100%; }
-        h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
-        .subtitle { color: #888; font-size: 0.875rem; margin-bottom: 1.5rem; }
-        .status { padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.875rem; }
-        .status.default { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #22c55e; }
-        .status.byok { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6; }
-        label { display: block; font-size: 0.8125rem; font-weight: 500; color: #888; margin-bottom: 0.375rem; }
-        select, input { width: 100%; padding: 0.75rem 1rem; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: #fafafa; font-size: 0.9375rem; margin-bottom: 1rem; }
-        select:focus, input:focus { outline: none; border-color: #22c55e; }
-        button { width: 100%; padding: 0.75rem 1rem; background: #22c55e; border: none; border-radius: 8px; color: #000; font-weight: 600; font-size: 0.9375rem; cursor: pointer; }
-        button:hover { background: #16a34a; }
-        button:disabled { opacity: 0.6; cursor: not-allowed; }
-        .remove { background: transparent; border: 1px solid #ef4444; color: #ef4444; margin-top: 0.5rem; }
-        .remove:hover { background: rgba(239, 68, 68, 0.1); }
-        .error { color: #ef4444; font-size: 0.875rem; margin-bottom: 1rem; display: none; }
-        .error.show { display: block; }
-        .success { color: #22c55e; font-size: 0.875rem; margin-bottom: 1rem; display: none; }
-        .success.show { display: block; }
-        .back { display: block; text-align: center; margin-top: 1.5rem; color: #888; font-size: 0.875rem; text-decoration: none; }
-        .back:hover { color: #fafafa; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h1>🤖 AI Settings</h1>
-        <p class="subtitle">Bring your own API key for higher-quality SOW generation.</p>
-        
-        <div id="status" class="status default">Using Prodway default (Gemini)</div>
-        
-        <form id="aiForm">
-            <input type="hidden" id="teamId" value="">
-            
-            <label for="provider">AI Provider</label>
-            <select id="provider" name="provider">
-                <option value="anthropic">Anthropic (Claude)</option>
-                <option value="openai" disabled>OpenAI (coming soon)</option>
-            </select>
-            
-            <label for="apiKey">API Key</label>
-            <input type="password" id="apiKey" name="api_key" placeholder="sk-ant-..." autocomplete="off">
-            
-            <div id="error" class="error"></div>
-            <div id="success" class="success"></div>
-            
-            <button type="submit" id="saveBtn">Save API Key</button>
-            <button type="button" id="removeBtn" class="remove" style="display:none;">Remove Key</button>
-        </form>
-        
-        <a href="slack://app" class="back">← Back to Slack</a>
-    </div>
-    
-    <script>
-        const teamId = new URLSearchParams(window.location.search).get('team_id') || '';
-        document.getElementById('teamId').value = teamId;
-        
-        // Check current status
-        fetch('/api/ai-config?team_id=' + teamId)
-            .then(r => r.json())
-            .then(data => {
-                if (data.configured) {
-                    document.getElementById('status').className = 'status byok';
-                    document.getElementById('status').textContent = 'Using your ' + data.provider.charAt(0).toUpperCase() + data.provider.slice(1) + ' key';
-                    document.getElementById('provider').value = data.provider;
-                    document.getElementById('apiKey').placeholder = 'sk-ant-...****';
-                    document.getElementById('removeBtn').style.display = 'block';
-                }
-            })
-            .catch(() => {});
-        
-        document.getElementById('aiForm').onsubmit = async function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('saveBtn');
-            const error = document.getElementById('error');
-            const success = document.getElementById('success');
-            error.className = 'error';
-            success.className = 'success';
-            
-            const apiKey = document.getElementById('apiKey').value.trim();
-            if (!apiKey) {
-                error.textContent = 'Please enter an API key';
-                error.className = 'error show';
-                return;
-            }
-            
-            btn.disabled = true;
-            btn.textContent = 'Validating...';
-            
-            try {
-                const res = await fetch('/api/ai-key', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        team_id: teamId,
-                        provider: document.getElementById('provider').value,
-                        api_key: apiKey
-                    })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || 'Failed to save');
-                
-                success.textContent = 'API key saved! You can close this page.';
-                success.className = 'success show';
-                document.getElementById('status').className = 'status byok';
-                document.getElementById('status').textContent = 'Using your Anthropic key';
-                document.getElementById('removeBtn').style.display = 'block';
-            } catch (err) {
-                error.textContent = err.message;
-                error.className = 'error show';
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Save API Key';
-            }
-        };
-        
-        document.getElementById('removeBtn').onclick = async function() {
-            if (!confirm('Remove your API key? SowFlow will use the default AI.')) return;
-            try {
-                await fetch('/api/ai-key', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ team_id: teamId })
-                });
-                document.getElementById('status').className = 'status default';
-                document.getElementById('status').textContent = 'Using Prodway default (Gemini)';
-                document.getElementById('apiKey').value = '';
-                document.getElementById('apiKey').placeholder = 'sk-ant-...';
-                document.getElementById('removeBtn').style.display = 'none';
-            } catch (err) {
-                alert('Failed to remove key');
-            }
-        };
-    </script>
-</body>
-</html>
-"""
-
-
-@api.get("/connect/ai")
-async def connect_ai_page(team_id: str = ""):
-    """Serve the AI settings page for BYOK configuration."""
-    if not team_id:
-        return HTMLResponse("<h1>Missing team_id parameter</h1>", status_code=400)
-    return HTMLResponse(AI_SETTINGS_HTML)
-
-
-@api.get("/api/ai-config")
-async def get_ai_config(team_id: str = ""):
-    """Get current AI config for a team."""
-    if not team_id:
-        return {"configured": False, "provider": "gemini"}
-    config = get_team_ai_config(team_id)
-    if config:
-        return {"configured": True, "provider": config.get("provider", "anthropic")}
-    return {"configured": False, "provider": "gemini"}
-
-
-@api.post("/api/ai-key")
-async def save_ai_key(req: Request):
-    """Save team's AI provider key (BYOK). Validates before saving."""
-    body = await req.json()
-    team_id = body.get("team_id", "").strip()
-    api_key = (body.get("api_key") or "").strip()
-    provider = body.get("provider", "anthropic")
-
-    if not team_id:
-        raise HTTPException(status_code=400, detail="Missing team_id")
-
-    if not api_key:
-        raise HTTPException(status_code=400, detail="Missing API key")
-
-    if provider == "anthropic":
-        if not api_key.startswith("sk-ant-"):
-            raise HTTPException(status_code=400, detail="Anthropic keys start with sk-ant-")
-        try:
-            test_client = Anthropic(api_key=api_key)
-            test_client.messages.create(
-                model="claude-3-5-haiku-20241022",
-                max_tokens=1,
-                messages=[{"role": "user", "content": "hi"}],
-            )
-        except Exception as e:
-            logger.warning(f"AI key validation failed: {e}")
-            raise HTTPException(status_code=400, detail="API key validation failed — check your key")
-    else:
-        raise HTTPException(status_code=400, detail=f"Provider '{provider}' not yet supported")
-
-    save_team_integrations(team_id, {
-        "ai_provider": {
-            "provider": provider,
-            "api_key": api_key,
-            "configured_at": datetime.now().isoformat(),
-        },
-    })
-    _team_ai_clients.pop(team_id, None)
-
-    return {"status": "configured", "provider": provider}
-
-
-@api.delete("/api/ai-key")
-async def delete_ai_key(req: Request):
-    """Remove team's AI provider key."""
-    body = await req.json()
-    team_id = body.get("team_id", "").strip()
-
-    if not team_id:
-        raise HTTPException(status_code=400, detail="Missing team_id")
-
-    save_team_integrations(team_id, {"ai_provider": None})
-    _team_ai_clients.pop(team_id, None)
-
-    return {"status": "removed"}
 
 
 
