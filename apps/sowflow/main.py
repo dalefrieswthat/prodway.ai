@@ -74,7 +74,56 @@ DOCUSIGN_BASE_URL = os.environ.get(
 )
 
 APP_URL = os.environ.get("APP_URL", "https://api.prodway.ai")
+LANDING_URL = "https://prodway.ai"
 
+
+def _branded_page(title: str, body_html: str, cta_text: str = "", cta_url: str = "") -> str:
+    """Return full HTML for a Prodway-branded page (billing/OAuth success, errors). Matches prodway.ai dark theme."""
+    cta = ""
+    if cta_text and cta_url:
+        cta = f'<p style="margin-top:1.5rem"><a href="{cta_url}" style="display:inline-flex;align-items:center;gap:0.5rem;height:48px;padding:0 1.5rem;background:#22c55e;color:#000;font-weight:600;font-size:0.9375rem;border-radius:10px;text-decoration:none;transition:background 0.2s">{cta_text} <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a></p>'
+    return f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title} — Prodway</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#050505">
+<style>
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+body {{ font-family: 'Inter', -apple-system, sans-serif; background: #050505; color: #fafafa; min-height: 100vh; -webkit-font-smoothing: antialiased; }}
+nav {{ background: rgba(5,5,5,0.9); backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.08); }}
+.nav-inner {{ max-width: 1120px; margin: 0 auto; padding: 0 2rem; height: 64px; display: flex; align-items: center; justify-content: space-between; }}
+.logo {{ display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: inherit; font-weight: 600; font-size: 1rem; }}
+.logo-mark {{ width: 32px; height: 32px; border-radius: 6px; background: rgba(34,197,94,0.1); display: grid; place-items: center; }}
+.logo-mark svg {{ width: 16px; height: 16px; color: #22c55e; }}
+.back {{ font-size: 0.875rem; color: #a1a1aa; text-decoration: none; transition: color 0.2s; }}
+.back:hover {{ color: #22c55e; }}
+main {{ max-width: 480px; margin: 0 auto; padding: 4rem 2rem; text-align: center; }}
+.card {{ background: #0f0f0f; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 2.5rem; }}
+h1 {{ font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem; letter-spacing: -0.02em; }}
+.card p {{ font-size: 1rem; color: #a1a1aa; line-height: 1.6; }}
+.success-icon {{ width: 48px; height: 48px; margin: 0 auto 1.25rem; border-radius: 50%; background: rgba(34,197,94,0.15); display: flex; align-items: center; justify-content: center; }}
+.success-icon svg {{ width: 24px; height: 24px; color: #22c55e; }}
+footer {{ padding: 2rem; text-align: center; font-size: 0.8125rem; color: #71717a; }}
+footer a {{ color: #a1a1aa; text-decoration: none; }}
+footer a:hover {{ color: #22c55e; }}
+</style>
+</head>
+<body>
+<nav><div class="nav-inner">
+<a href="{LANDING_URL}" class="logo"><div class="logo-mark"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>Prodway</a>
+<a href="{LANDING_URL}" class="back">← Back to prodway.ai</a>
+</div></nav>
+<main><div class="card">
+{body_html}
+{cta}
+</div></main>
+<footer><a href="{LANDING_URL}">prodway.ai</a> · <a href="{LANDING_URL}/#contact">Contact</a></footer>
+</body>
+</html>'''
 # SendGrid (contact form emails)
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
 CONTACT_TO_EMAIL = os.environ.get("CONTACT_TO_EMAIL", "dale@prodway.ai")
@@ -2794,7 +2843,7 @@ async def slack_events(req: Request):
 async def connect_docusign(team_id: str = ""):
     """Start DocuSign OAuth flow — customer connects their own account."""
     if not DOCUSIGN_INTEGRATION_KEY:
-        return HTMLResponse(content="<h1>DocuSign not configured</h1>", status_code=500)
+        return HTMLResponse(content=_branded_page("DocuSign", "<p>DocuSign is not configured for this app. Please contact support.</p>", "Back to prodway.ai", LANDING_URL), status_code=500)
 
     # Store team_id in state so we know who's connecting on callback
     state = f"{team_id}:{uuid.uuid4().hex[:8]}"
@@ -2817,7 +2866,7 @@ async def connect_docusign_callback(code: str = "", state: str = ""):
     team_id = state.split(":")[0] if ":" in state else state
 
     if not code:
-        return HTMLResponse(content="<h1>Authorization failed</h1>", status_code=400)
+        return HTMLResponse(content=_branded_page("Authorization", "<p>Authorization was denied or the link expired. Please try again from Slack.</p>", "Back to prodway.ai", LANDING_URL), status_code=400)
 
     # Exchange code for access token
     token_url = f"https://{DOCUSIGN_AUTH_SERVER}/oauth/token"
@@ -2868,21 +2917,20 @@ async def connect_docusign_callback(code: str = "", state: str = ""):
                 "docusign_connected_at": datetime.now().isoformat(),
             })
 
-            return HTMLResponse(content=(
-                "<html><body style='font-family:system-ui;text-align:center;padding:80px;"
-                "background:#f8f9fa'>"
-                "<div style='max-width:500px;margin:0 auto;background:white;padding:40px;"
-                "border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1)'>"
-                "<h1 style='color:#22c55e'>✅ DocuSign Connected</h1>"
-                f"<p>Account: {default_account.get('account_name', 'Connected')}</p>"
-                "<p style='color:#666'>You can close this window and return to Slack.</p>"
-                "</div></body></html>"
-            ))
+            acc_name = default_account.get("account_name", "Connected")
+            body = (
+                '<div class="success-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">'
+                '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>'
+                '<h1>DocuSign connected</h1>'
+                f'<p>Account: {acc_name}. You can close this window and return to Slack.</p>'
+            )
+            return HTMLResponse(content=_branded_page("DocuSign", body, "Open Slack", "https://slack.com/apps"))
 
     except Exception as e:
         logger.error(f"DocuSign OAuth failed: {e}")
+        err_msg = str(e).replace("<", "&lt;").replace(">", "&gt;")
         return HTMLResponse(
-            content=f"<h1>Connection failed</h1><p>{str(e)}</p>",
+            content=_branded_page("Connection failed", f"<p>We couldn't connect your DocuSign account. {err_msg}</p><p>Try again from Slack or <a href='" + LANDING_URL + "/#contact' style='color:#22c55e'>contact us</a>.</p>", "Back to prodway.ai", LANDING_URL),
             status_code=500,
         )
 
@@ -2894,7 +2942,7 @@ async def connect_docusign_callback(code: str = "", state: str = ""):
 async def connect_stripe(team_id: str = ""):
     """Start Stripe Connect OAuth — customer connects their own Stripe account."""
     if not STRIPE_CLIENT_ID:
-        return HTMLResponse(content="<h1>Stripe Connect not configured</h1>", status_code=500)
+        return HTMLResponse(content=_branded_page("Stripe Connect", "<p>Stripe Connect is not configured. Please contact support.</p>", "Back to prodway.ai", LANDING_URL), status_code=500)
 
     state = f"{team_id}:{uuid.uuid4().hex[:8]}"
     connect_url = (
@@ -2916,7 +2964,7 @@ async def connect_stripe_callback(code: str = "", state: str = ""):
     team_id = state.split(":")[0] if ":" in state else state
 
     if not code:
-        return HTMLResponse(content="<h1>Authorization failed</h1>", status_code=400)
+        return HTMLResponse(content=_branded_page("Authorization", "<p>Authorization was denied or the link expired. Try again from Slack.</p>", "Back to prodway.ai", LANDING_URL), status_code=400)
 
     try:
         # Exchange authorization code for connected account
@@ -2929,21 +2977,19 @@ async def connect_stripe_callback(code: str = "", state: str = ""):
             "stripe_connected_at": datetime.now().isoformat(),
         })
 
-        return HTMLResponse(content=(
-            "<html><body style='font-family:system-ui;text-align:center;padding:80px;"
-            "background:#f8f9fa'>"
-            "<div style='max-width:500px;margin:0 auto;background:white;padding:40px;"
-            "border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1)'>"
-            "<h1 style='color:#22c55e'>✅ Stripe Connected</h1>"
-            f"<p>Account ID: {resp['stripe_user_id']}</p>"
-            "<p style='color:#666'>You can close this window and return to Slack.</p>"
-            "</div></body></html>"
-        ))
+        body = (
+            '<div class="success-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">'
+            '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>'
+            '<h1>Stripe connected</h1>'
+            f'<p>Your Stripe account is linked. You can close this window and return to Slack.</p>'
+        )
+        return HTMLResponse(content=_branded_page("Stripe Connect", body, "Open Slack", "https://slack.com/apps"))
 
     except Exception as e:
         logger.error(f"Stripe Connect OAuth failed: {e}")
+        err_msg = str(e).replace("<", "&lt;").replace(">", "&gt;")
         return HTMLResponse(
-            content=f"<h1>Connection failed</h1><p>{str(e)}</p>",
+            content=_branded_page("Connection failed", f"<p>We couldn't link your Stripe account. {err_msg}</p><p>Try again from Slack or <a href='" + LANDING_URL + "/#contact' style='color:#22c55e'>contact us</a>.</p>", "Back to prodway.ai", LANDING_URL),
             status_code=500,
         )
 
@@ -2971,39 +3017,36 @@ def _create_billing_checkout_session(team_id: str):
 async def billing_checkout(team_id: str = ""):
     from fastapi.responses import RedirectResponse
     if not team_id:
-        return HTMLResponse(content="<h1>Missing team_id</h1>", status_code=400)
+        return HTMLResponse(content=_branded_page("Setup", "<p>Missing workspace. Please start from the SowFlow app in Slack: open the app and click Upgrade.</p>"), status_code=400)
     url = _create_billing_checkout_session(team_id)
     if not url:
-        return HTMLResponse(content="<h1>Billing not configured</h1>", status_code=503)
+        return HTMLResponse(content=_branded_page("Billing", "<p>Billing is not configured yet. Please try again later or <a href='" + LANDING_URL + "/#contact' style='color:#22c55e'>contact us</a>.</p>"), status_code=503)
     return RedirectResponse(url=url, status_code=302)
 
 @api.get("/api/billing/success")
 async def billing_success(session_id: str = ""):
-    return HTMLResponse(content=(
-        "<html><body style='font-family:system-ui;text-align:center;padding:80px;background:#f8f9fa'>"
-        "<div style='max-width:500px;margin:0 auto;background:white;padding:40px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1)'>"
-        "<h1 style='color:#22c55e'>You're subscribed</h1>"
-        "<p style='color:#666'>Close this window and return to Slack. 25 SOWs/mo included, then $0.25 each.</p>"
-        "</div></body></html>"
-    ))
+    body = (
+        '<div class="success-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">'
+        '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>'
+        '<h1>You\'re subscribed</h1>'
+        '<p>Your workspace is now on the paid plan. You get 25 SOWs per month included, then $0.25 per SOW after that. You can close this window and return to Slack — or open Slack below.</p>'
+    )
+    return HTMLResponse(content=_branded_page("Success", body, "Open Slack", "https://slack.com/apps"))
 
 @api.get("/api/billing/cancel")
 async def billing_cancel():
-    return HTMLResponse(content=(
-        "<html><body style='font-family:system-ui;text-align:center;padding:80px;background:#f8f9fa'>"
-        "<div style='max-width:500px;margin:0 auto;background:white;padding:40px;border-radius:12px'>"
-        "<h1>Cancelled</h1><p>You can close this window.</p></div></body></html>"
-    ))
+    body = '<h1>Checkout cancelled</h1><p>No charge was made. You can close this window or return to Slack to try again later.</p>'
+    return HTMLResponse(content=_branded_page("Cancelled", body, "Back to prodway.ai", LANDING_URL))
 
 @api.get("/api/billing/portal")
 async def billing_portal(team_id: str = ""):
     from fastapi.responses import RedirectResponse
     if not team_id or not STRIPE_SECRET_KEY:
-        return HTMLResponse(content="<h1>Missing team_id or Stripe not configured</h1>", status_code=400)
+        return HTMLResponse(content=_branded_page("Error", "<p>Invalid request or billing is not configured. Start from the SowFlow app in Slack.</p>"), status_code=400)
     billing = get_team_billing(team_id)
     customer_id = billing.get("stripe_billing_customer_id")
     if not customer_id:
-        return HTMLResponse(content="<h1>No billing account. Upgrade first from the Slack app.</h1>", status_code=400)
+        return HTMLResponse(content=_branded_page("Billing", "<p>No subscription yet. Open SowFlow in Slack and click <strong>Upgrade</strong> to subscribe, then you can manage billing here.</p>", "Open Slack", "https://slack.com/apps"), status_code=400)
     try:
         session = stripe.billing_portal.Session.create(
             customer=customer_id,
@@ -3012,7 +3055,7 @@ async def billing_portal(team_id: str = ""):
         return RedirectResponse(url=session.url, status_code=302)
     except stripe.error.StripeError as e:
         logger.warning(f"Portal session failed: {e}")
-        return HTMLResponse(content="<h1>Could not open billing portal</h1>", status_code=500)
+        return HTMLResponse(content=_branded_page("Error", "<p>We couldn't open the billing portal. Please try again from Slack or <a href='" + LANDING_URL + "/#contact' style='color:#22c55e'>contact us</a>.</p>", "Back to prodway.ai", LANDING_URL), status_code=500)
 
 # --- BYOK: AI Key Configuration (API) ---
 
