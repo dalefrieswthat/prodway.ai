@@ -1666,9 +1666,17 @@ def handle_app_home(client, event, context):
     # Check integration status
     team_docusign = get_team_docusign(team_id)
     team_stripe = get_team_stripe(team_id)
+    team_ai = get_team_ai_config(team_id)
 
     ds_status = "✅ Connected" if team_docusign else f"<{APP_URL}/connect/docusign?team_id={team_id}|Connect DocuSign>"
     stripe_status = "✅ Connected" if team_stripe else f"<{APP_URL}/connect/stripe?team_id={team_id}|Connect Stripe>"
+    
+    # AI status: show provider if BYOK, else platform default
+    if team_ai and team_ai.get("api_key"):
+        provider_name = team_ai.get("provider", "anthropic").title()
+        ai_status = f"✅ Your key ({provider_name}) · <{APP_URL}/connect/ai?team_id={team_id}|Manage>"
+    else:
+        ai_status = f"Prodway default · <{APP_URL}/connect/ai?team_id={team_id}|Add your key>"
 
     blocks = [
         {
@@ -1694,7 +1702,8 @@ def handle_app_home(client, event, context):
                 "text": (
                     "*🔌 Integrations*\n"
                     f"• 📝 DocuSign: {ds_status}\n"
-                    f"• 💳 Stripe: {stripe_status}\n\n"
+                    f"• 💳 Stripe: {stripe_status}\n"
+                    f"• 🤖 AI: {ai_status}\n\n"
                     "_Connect your accounts to send SOWs for e-signature "
                     "and automatically invoice clients._"
                 ),
@@ -2526,40 +2535,231 @@ async def connect_stripe_callback(code: str = "", state: str = ""):
 # --- BYOK: AI Key Configuration (API) ---
 
 
-@api.post("/connect/ai-key")
-async def connect_ai_key(req: Request, auth: dict = Depends(require_api_auth)):
-    """Configure team's AI provider key (BYOK). Validates before saving."""
+
+# --- AI Provider Configuration (BYOK) ---
+
+AI_SETTINGS_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Settings — SowFlow</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fafafa; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+        .card { background: #111; border: 1px solid #222; border-radius: 12px; padding: 2rem; max-width: 420px; width: 100%; }
+        h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .subtitle { color: #888; font-size: 0.875rem; margin-bottom: 1.5rem; }
+        .status { padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.875rem; }
+        .status.default { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #22c55e; }
+        .status.byok { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6; }
+        label { display: block; font-size: 0.8125rem; font-weight: 500; color: #888; margin-bottom: 0.375rem; }
+        select, input { width: 100%; padding: 0.75rem 1rem; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: #fafafa; font-size: 0.9375rem; margin-bottom: 1rem; }
+        select:focus, input:focus { outline: none; border-color: #22c55e; }
+        button { width: 100%; padding: 0.75rem 1rem; background: #22c55e; border: none; border-radius: 8px; color: #000; font-weight: 600; font-size: 0.9375rem; cursor: pointer; }
+        button:hover { background: #16a34a; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .remove { background: transparent; border: 1px solid #ef4444; color: #ef4444; margin-top: 0.5rem; }
+        .remove:hover { background: rgba(239, 68, 68, 0.1); }
+        .error { color: #ef4444; font-size: 0.875rem; margin-bottom: 1rem; display: none; }
+        .error.show { display: block; }
+        .success { color: #22c55e; font-size: 0.875rem; margin-bottom: 1rem; display: none; }
+        .success.show { display: block; }
+        .back { display: block; text-align: center; margin-top: 1.5rem; color: #888; font-size: 0.875rem; text-decoration: none; }
+        .back:hover { color: #fafafa; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🤖 AI Settings</h1>
+        <p class="subtitle">Bring your own API key for higher-quality SOW generation.</p>
+        
+        <div id="status" class="status default">Using Prodway default (Gemini)</div>
+        
+        <form id="aiForm">
+            <input type="hidden" id="teamId" value="">
+            
+            <label for="provider">AI Provider</label>
+            <select id="provider" name="provider">
+                <option value="anthropic">Anthropic (Claude)</option>
+                <option value="openai" disabled>OpenAI (coming soon)</option>
+            </select>
+            
+            <label for="apiKey">API Key</label>
+            <input type="password" id="apiKey" name="api_key" placeholder="sk-ant-..." autocomplete="off">
+            
+            <div id="error" class="error"></div>
+            <div id="success" class="success"></div>
+            
+            <button type="submit" id="saveBtn">Save API Key</button>
+            <button type="button" id="removeBtn" class="remove" style="display:none;">Remove Key</button>
+        </form>
+        
+        <a href="slack://app" class="back">← Back to Slack</a>
+    </div>
+    
+    <script>
+        const teamId = new URLSearchParams(window.location.search).get('team_id') || '';
+        document.getElementById('teamId').value = teamId;
+        
+        // Check current status
+        fetch('/api/ai-config?team_id=' + teamId)
+            .then(r => r.json())
+            .then(data => {
+                if (data.configured) {
+                    document.getElementById('status').className = 'status byok';
+                    document.getElementById('status').textContent = 'Using your ' + data.provider.charAt(0).toUpperCase() + data.provider.slice(1) + ' key';
+                    document.getElementById('provider').value = data.provider;
+                    document.getElementById('apiKey').placeholder = 'sk-ant-...****';
+                    document.getElementById('removeBtn').style.display = 'block';
+                }
+            })
+            .catch(() => {});
+        
+        document.getElementById('aiForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('saveBtn');
+            const error = document.getElementById('error');
+            const success = document.getElementById('success');
+            error.className = 'error';
+            success.className = 'success';
+            
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (!apiKey) {
+                error.textContent = 'Please enter an API key';
+                error.className = 'error show';
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = 'Validating...';
+            
+            try {
+                const res = await fetch('/api/ai-key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        team_id: teamId,
+                        provider: document.getElementById('provider').value,
+                        api_key: apiKey
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Failed to save');
+                
+                success.textContent = 'API key saved! You can close this page.';
+                success.className = 'success show';
+                document.getElementById('status').className = 'status byok';
+                document.getElementById('status').textContent = 'Using your Anthropic key';
+                document.getElementById('removeBtn').style.display = 'block';
+            } catch (err) {
+                error.textContent = err.message;
+                error.className = 'error show';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save API Key';
+            }
+        };
+        
+        document.getElementById('removeBtn').onclick = async function() {
+            if (!confirm('Remove your API key? SowFlow will use the default AI.')) return;
+            try {
+                await fetch('/api/ai-key', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ team_id: teamId })
+                });
+                document.getElementById('status').className = 'status default';
+                document.getElementById('status').textContent = 'Using Prodway default (Gemini)';
+                document.getElementById('apiKey').value = '';
+                document.getElementById('apiKey').placeholder = 'sk-ant-...';
+                document.getElementById('removeBtn').style.display = 'none';
+            } catch (err) {
+                alert('Failed to remove key');
+            }
+        };
+    </script>
+</body>
+</html>
+"""
+
+
+@api.get("/connect/ai")
+async def connect_ai_page(team_id: str = ""):
+    """Serve the AI settings page for BYOK configuration."""
+    if not team_id:
+        return HTMLResponse("<h1>Missing team_id parameter</h1>", status_code=400)
+    return HTMLResponse(AI_SETTINGS_HTML)
+
+
+@api.get("/api/ai-config")
+async def get_ai_config(team_id: str = ""):
+    """Get current AI config for a team."""
+    if not team_id:
+        return {"configured": False, "provider": "gemini"}
+    config = get_team_ai_config(team_id)
+    if config:
+        return {"configured": True, "provider": config.get("provider", "anthropic")}
+    return {"configured": False, "provider": "gemini"}
+
+
+@api.post("/api/ai-key")
+async def save_ai_key(req: Request):
+    """Save team's AI provider key (BYOK). Validates before saving."""
     body = await req.json()
+    team_id = body.get("team_id", "").strip()
     api_key = (body.get("api_key") or "").strip()
     provider = body.get("provider", "anthropic")
-    workspace_id = auth.get("workspace_id", "")
 
-    if not api_key or not api_key.startswith("sk-"):
-        raise HTTPException(status_code=400, detail="Invalid API key format")
+    if not team_id:
+        raise HTTPException(status_code=400, detail="Missing team_id")
 
-    if provider != "anthropic":
-        raise HTTPException(status_code=400, detail="Only 'anthropic' provider is supported")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Missing API key")
 
-    try:
-        test_client = Anthropic(api_key=api_key)
-        test_client.messages.create(
-            model="claude-3-5-haiku-20241022",
-            max_tokens=1,
-            messages=[{"role": "user", "content": "hi"}],
-        )
-    except Exception:
-        raise HTTPException(status_code=400, detail="API key validation failed")
+    if provider == "anthropic":
+        if not api_key.startswith("sk-ant-"):
+            raise HTTPException(status_code=400, detail="Anthropic keys start with sk-ant-")
+        try:
+            test_client = Anthropic(api_key=api_key)
+            test_client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=1,
+                messages=[{"role": "user", "content": "hi"}],
+            )
+        except Exception as e:
+            logger.warning(f"AI key validation failed: {e}")
+            raise HTTPException(status_code=400, detail="API key validation failed — check your key")
+    else:
+        raise HTTPException(status_code=400, detail=f"Provider '{provider}' not yet supported")
 
-    save_team_integrations(workspace_id, {
+    save_team_integrations(team_id, {
         "ai_provider": {
             "provider": provider,
             "api_key": api_key,
             "configured_at": datetime.now().isoformat(),
         },
     })
-    _team_ai_clients.pop(workspace_id, None)
+    _team_ai_clients.pop(team_id, None)
 
     return {"status": "configured", "provider": provider}
+
+
+@api.delete("/api/ai-key")
+async def delete_ai_key(req: Request):
+    """Remove team's AI provider key."""
+    body = await req.json()
+    team_id = body.get("team_id", "").strip()
+
+    if not team_id:
+        raise HTTPException(status_code=400, detail="Missing team_id")
+
+    save_team_integrations(team_id, {"ai_provider": None})
+    _team_ai_clients.pop(team_id, None)
+
+    return {"status": "removed"}
+
+
 
 
 # --- DocuSign Webhook: Auto-invoice on signature ---
