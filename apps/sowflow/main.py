@@ -451,8 +451,7 @@ def get_team_ai_config(team_id: str) -> dict | None:
     return None
 
 
-# Billing: free tier then $5/mo + $0.25/SOW over 25
-FREE_SOW_LIMIT = 5
+# Billing: $5/mo + $0.25/SOW over 25 (no free tier)
 SUBSCRIPTION_INCLUDED_SOWS = 25
 
 
@@ -491,12 +490,9 @@ def can_team_generate_sow(team_id: str) -> tuple[bool, str]:
     sub_status = (billing.get("stripe_subscription_status") or "").lower()
     if sub_status == "active":
         return True, ""
-    count = get_sow_count_this_month(team_id)
-    if count < FREE_SOW_LIMIT:
-        return True, ""
     return False, (
-        f"You've used your {FREE_SOW_LIMIT} free SOWs this month. "
-        f"<{APP_URL}/api/billing/checkout?team_id={team_id}|Upgrade to Prodway> to keep generating ($5/mo, 25 SOWs included, $0.25 each after)."
+        f"SowFlow requires a subscription to generate SOWs. "
+        f"<{APP_URL}/api/billing/checkout?team_id={team_id}|Subscribe now> — $5/mo, 25 SOWs included, $0.25 each after."
     )
 
 
@@ -2121,7 +2117,7 @@ def handle_app_home(client, event, context):
         billing_button = {"text": {"type": "plain_text", "text": "Manage billing"}, "url": f"{APP_URL}/api/billing/portal?team_id={team_id}"}
     else:
         count = get_sow_count_this_month(team_id)
-        billing_status = f"Free ({count}/{FREE_SOW_LIMIT} SOWs this month)"
+        billing_status = "Not subscribed"
         billing_button = {"text": {"type": "plain_text", "text": "Upgrade"}, "url": f"{APP_URL}/api/billing/checkout?team_id={team_id}"}
 
     blocks = [
