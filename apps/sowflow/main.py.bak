@@ -38,8 +38,6 @@ from pydantic import BaseModel, Field, field_validator, EmailStr
 from anthropic import Anthropic
 from slack_bolt import App
 from slack_bolt.oauth.oauth_settings import OAuthSettings
-from slack_bolt.oauth.callback_options import CallbackOptions, SuccessArgs, FailureArgs
-from slack_bolt.response import BoltResponse
 from slack_bolt.adapter.fastapi import SlackRequestHandler
 from slack_sdk import WebClient
 from slack_sdk.oauth.installation_store import FileInstallationStore
@@ -76,56 +74,7 @@ DOCUSIGN_BASE_URL = os.environ.get(
 )
 
 APP_URL = os.environ.get("APP_URL", "https://api.prodway.ai")
-LANDING_URL = "https://prodway.ai"
 
-
-def _branded_page(title: str, body_html: str, cta_text: str = "", cta_url: str = "") -> str:
-    """Return full HTML for a Prodway-branded page (billing/OAuth success, errors). Matches prodway.ai dark theme."""
-    cta = ""
-    if cta_text and cta_url:
-        cta = f'<p style="margin-top:1.5rem"><a href="{cta_url}" style="display:inline-flex;align-items:center;gap:0.5rem;height:48px;padding:0 1.5rem;background:#22c55e;color:#000;font-weight:600;font-size:0.9375rem;border-radius:10px;text-decoration:none;transition:background 0.2s">{cta_text} <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a></p>'
-    return f'''<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{title} — Prodway</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<meta name="theme-color" content="#050505">
-<style>
-* {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{ font-family: 'Inter', -apple-system, sans-serif; background: #050505; color: #fafafa; min-height: 100vh; -webkit-font-smoothing: antialiased; }}
-nav {{ background: rgba(5,5,5,0.9); backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.08); }}
-.nav-inner {{ max-width: 1120px; margin: 0 auto; padding: 0 2rem; height: 64px; display: flex; align-items: center; justify-content: space-between; }}
-.logo {{ display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: inherit; font-weight: 600; font-size: 1rem; }}
-.logo-mark {{ width: 32px; height: 32px; border-radius: 6px; background: rgba(34,197,94,0.1); display: grid; place-items: center; }}
-.logo-mark svg {{ width: 16px; height: 16px; color: #22c55e; }}
-.back {{ font-size: 0.875rem; color: #a1a1aa; text-decoration: none; transition: color 0.2s; }}
-.back:hover {{ color: #22c55e; }}
-main {{ max-width: 480px; margin: 0 auto; padding: 4rem 2rem; text-align: center; }}
-.card {{ background: #0f0f0f; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 2.5rem; }}
-h1 {{ font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem; letter-spacing: -0.02em; }}
-.card p {{ font-size: 1rem; color: #a1a1aa; line-height: 1.6; }}
-.success-icon {{ width: 48px; height: 48px; margin: 0 auto 1.25rem; border-radius: 50%; background: rgba(34,197,94,0.15); display: flex; align-items: center; justify-content: center; }}
-.success-icon svg {{ width: 24px; height: 24px; color: #22c55e; }}
-footer {{ padding: 2rem; text-align: center; font-size: 0.8125rem; color: #71717a; }}
-footer a {{ color: #a1a1aa; text-decoration: none; }}
-footer a:hover {{ color: #22c55e; }}
-</style>
-</head>
-<body>
-<nav><div class="nav-inner">
-<a href="{LANDING_URL}" class="logo"><div class="logo-mark"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>Prodway</a>
-<a href="{LANDING_URL}" class="back">← Back to prodway.ai</a>
-</div></nav>
-<main><div class="card">
-{body_html}
-{cta}
-</div></main>
-<footer><a href="{LANDING_URL}">prodway.ai</a> · <a href="{LANDING_URL}/#contact">Contact</a></footer>
-</body>
-</html>'''
 # SendGrid (contact form emails)
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
 CONTACT_TO_EMAIL = os.environ.get("CONTACT_TO_EMAIL", "dale@prodway.ai")
@@ -264,66 +213,6 @@ if _CLI_MODE:
     print(f"\nUsage: curl -H 'Authorization: Bearer {token}' {APP_URL}/api/sows")
     sys.exit(0)
 
-def _oauth_success_callback(args: SuccessArgs) -> BoltResponse:
-    """Handle post-OAuth: link signup to team or check subscription."""
-    team_id = args.installation.team_id
-    request = args.request
-    
-    # Check for signup_token from paid signup flow
-    signup_token = None
-    if hasattr(request, 'query') and request.query:
-        # Parse query string for signup_token
-        import urllib.parse
-        params = urllib.parse.parse_qs(request.query)
-        signup_token = params.get("signup_token", [None])[0]
-    
-    if signup_token and signup_token.startswith("sig_"):
-        # This is a new paid signup - link the subscription to this team
-        pending = _pending_signups.get(signup_token, {})
-        if pending and pending.get("stripe_subscription_id"):
-            # Transfer billing info from pending signup to team
-            set_team_billing(team_id,
-                stripe_billing_customer_id=pending.get("stripe_customer_id", ""),
-                stripe_subscription_id=pending.get("stripe_subscription_id", ""),
-                stripe_subscription_status=pending.get("stripe_subscription_status", "active"),
-                stripe_subscription_usage_item_id=pending.get("stripe_subscription_usage_item_id", ""),
-                signup_token=signup_token,
-            )
-            # Clean up pending signup
-            _pending_signups.pop(signup_token, None)
-            logger.info(f"Linked signup {signup_token} billing to team {team_id}")
-        else:
-            # Webhook hasn't processed yet or signup expired - save token for later linking
-            save_team_integrations(team_id, {"signup_token": signup_token})
-            logger.info(f"Saved signup token {signup_token} for team {team_id} (pending webhook)")
-        
-        return BoltResponse(
-            status=302,
-            headers={"Location": f"{APP_URL}/install/success?team_id={team_id}"}
-        )
-    
-    # Check if already subscribed (existing team or webhook already processed)
-    if is_team_subscribed(team_id):
-        return BoltResponse(
-            status=302,
-            headers={"Location": f"{APP_URL}/install/success?team_id={team_id}"}
-        )
-    
-    # Not subscribed and no signup token — redirect to signup
-    return BoltResponse(
-        status=302,
-        headers={"Location": f"{APP_URL}/signup"}
-    )
-
-
-def _oauth_failure_callback(args: FailureArgs) -> BoltResponse:
-    """Handle OAuth failure."""
-    return BoltResponse(
-        status=302,
-        headers={"Location": f"{LANDING_URL}?error=install_failed"}
-    )
-
-
 _installation_store = FileInstallationStore(base_dir=str(DATA_DIR / "installations"))
 
 bolt_app = App(
@@ -342,10 +231,6 @@ bolt_app = App(
             state_store=FileOAuthStateStore(
                 expiration_seconds=600,
                 base_dir=str(DATA_DIR / "states"),
-            ),
-            callback_options=CallbackOptions(
-                success=_oauth_success_callback,
-                failure=_oauth_failure_callback,
             ),
         ),
     )
@@ -517,7 +402,8 @@ def get_team_ai_config(team_id: str) -> dict | None:
     return None
 
 
-# Billing: $5/mo + $0.25/SOW over 25 (no free tier)
+# Billing: free tier then $5/mo + $0.25/SOW over 25
+FREE_SOW_LIMIT = 5
 SUBSCRIPTION_INCLUDED_SOWS = 25
 
 
@@ -556,9 +442,12 @@ def can_team_generate_sow(team_id: str) -> tuple[bool, str]:
     sub_status = (billing.get("stripe_subscription_status") or "").lower()
     if sub_status == "active":
         return True, ""
+    count = get_sow_count_this_month(team_id)
+    if count < FREE_SOW_LIMIT:
+        return True, ""
     return False, (
-        f"SowFlow requires a subscription to generate SOWs. "
-        f"<{APP_URL}/api/billing/checkout?team_id={team_id}|Subscribe now> — $5/mo, 25 SOWs included, $0.25 each after."
+        f"You've used your {FREE_SOW_LIMIT} free SOWs this month. "
+        f"<{APP_URL}/api/billing/checkout?team_id={team_id}|Upgrade to Prodway> to keep generating ($5/mo, 25 SOWs included, $0.25 each after)."
     )
 
 
@@ -572,49 +461,18 @@ def report_sow_usage(team_id: str) -> None:
     if not usage_item_id:
         return
     count = get_sow_count_this_month(team_id)
-    if count <= SUBSCRIPTION_INCLUDED_SOWS:
+    overage = max(0, count - SUBSCRIPTION_INCLUDED_SOWS)
+    if overage <= 0:
         return
     try:
         stripe.SubscriptionItem.create_usage_record(
             usage_item_id,
-            quantity=1,
-            action="increment",
+            quantity=overage,
+            action="set",
+            timestamp=int(datetime.now().timestamp()),
         )
     except stripe.error.StripeError as e:
         logger.warning(f"Stripe usage report failed for team {team_id}: {e}")
-
-
-def get_team_api_key(team_id: str) -> str | None:
-    """Get the team's Prodway API key (for FormPilot, etc.)."""
-    integrations = load_team_integrations(team_id)
-    return integrations.get("prodway_api_key")
-
-
-def generate_team_api_key(team_id: str) -> str:
-    """Generate a new Prodway API key for a team. Overwrites existing."""
-    api_key = f"pw_{secrets.token_urlsafe(32)}"
-    save_team_integrations(team_id, {"prodway_api_key": api_key})
-    return api_key
-
-
-def get_team_by_api_key(api_key: str) -> str | None:
-    """Look up team_id from a Prodway API key. Returns None if not found."""
-    if not api_key or not api_key.startswith("pw_"):
-        return None
-    for f in (DATA_DIR / "integrations").glob("*.json"):
-        try:
-            data = json.loads(f.read_text())
-            if data.get("prodway_api_key") == api_key:
-                return f.stem  # filename is team_id.json
-        except (json.JSONDecodeError, IOError):
-            continue
-    return None
-
-
-def is_team_subscribed(team_id: str) -> bool:
-    """Check if a team has an active subscription."""
-    billing = get_team_billing(team_id)
-    return (billing.get("stripe_subscription_status") or "").lower() == "active"
 
 
 _team_ai_clients: dict[str, tuple] = {}  # (client, timestamp, provider)
@@ -1842,16 +1700,6 @@ def handle_edit_sow(ack, body, client):
     if not sow:
         return
 
-    team_id = sow.get("_team_id") or body.get("team", {}).get("id", "")
-    if not is_team_subscribed(team_id):
-        user_id = body["user"]["id"]
-        client.chat_postEphemeral(
-            channel=body["channel"]["id"],
-            user=user_id,
-            text=f"Editing SOWs requires an active subscription. <{APP_URL}/api/billing/checkout?team_id={team_id}|Subscribe now> — $5/mo, includes SowFlow + FormPilot."
-        )
-        return
-
     client.views_open(
         trigger_id=body["trigger_id"],
         view={
@@ -2125,70 +1973,6 @@ def handle_remove_ai_key(ack, body, client, context):
     )
 
 
-@bolt_app.action("generate_api_key")
-def handle_generate_api_key(ack, body, client, context):
-    """Generate a new Prodway API key for FormPilot."""
-    ack()
-    team_id = context.get("team_id", "")
-    user_id = body["user"]["id"]
-    
-    if not is_team_subscribed(team_id):
-        client.chat_postEphemeral(
-            channel=user_id,
-            user=user_id,
-            text=f"API keys require an active subscription. <{APP_URL}/api/billing/checkout?team_id={team_id}|Subscribe now>"
-        )
-        return
-    
-    api_key = generate_team_api_key(team_id)
-    _audit_log(team_id, user_id, "api_key_generated", {})
-    
-    client.chat_postMessage(
-        channel=user_id,
-        text=(
-            f"🔑 *Your Prodway API Key*\n\n"
-            f"`{api_key}`\n\n"
-            f"Copy this key into FormPilot Chrome extension settings.\n"
-            f"_Keep this secret. You can regenerate it anytime from the SowFlow App Home._"
-        )
-    )
-    
-    # Refresh App Home
-    handle_app_home(client, {"user": user_id}, context)
-
-
-@bolt_app.action("regenerate_api_key")
-def handle_regenerate_api_key(ack, body, client, context):
-    """Regenerate the team's Prodway API key."""
-    ack()
-    team_id = context.get("team_id", "")
-    user_id = body["user"]["id"]
-    
-    if not is_team_subscribed(team_id):
-        client.chat_postEphemeral(
-            channel=user_id,
-            user=user_id,
-            text=f"API keys require an active subscription. <{APP_URL}/api/billing/checkout?team_id={team_id}|Subscribe now>"
-        )
-        return
-    
-    api_key = generate_team_api_key(team_id)
-    _audit_log(team_id, user_id, "api_key_regenerated", {})
-    
-    client.chat_postMessage(
-        channel=user_id,
-        text=(
-            f"🔑 *Your New Prodway API Key*\n\n"
-            f"`{api_key}`\n\n"
-            f"Your old key has been invalidated. Update FormPilot with this new key.\n"
-            f"_Keep this secret._"
-        )
-    )
-    
-    # Refresh App Home
-    handle_app_home(client, {"user": user_id}, context)
-
-
 @bolt_app.view("ai_config_modal")
 def handle_ai_config_submit(ack, body, client, view):
     """Validate and save AI config from modal submission."""
@@ -2290,7 +2074,7 @@ def handle_app_home(client, event, context):
         billing_button = {"text": {"type": "plain_text", "text": "Manage billing"}, "url": f"{APP_URL}/api/billing/portal?team_id={team_id}"}
     else:
         count = get_sow_count_this_month(team_id)
-        billing_status = "Not subscribed"
+        billing_status = f"Free ({count}/{FREE_SOW_LIMIT} SOWs this month)"
         billing_button = {"text": {"type": "plain_text", "text": "Upgrade"}, "url": f"{APP_URL}/api/billing/checkout?team_id={team_id}"}
 
     blocks = [
@@ -2318,10 +2102,7 @@ def handle_app_home(client, event, context):
                     "*🔌 Integrations*\n"
                     f"• 📝 DocuSign: {ds_status}\n"
                     f"• 💳 Stripe: {stripe_status}\n"
-                    f"• 🤖 AI: {ai_status_text}\
-"
-                    f"• 📋 Billing: {billing_status}\
-\n"
+                    f"• 🤖 AI: {ai_status_text}\n\n"
                     "_Connect your accounts to send SOWs for e-signature "
                     "and automatically invoice clients._"
                 ),
@@ -2336,48 +2117,27 @@ def handle_app_home(client, event, context):
                     "action_id": "configure_ai",
                     "style": "primary" if ai_button_text == "Add your key" else None,
                 },
-                {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "Manage billing" if sub_active else "Upgrade"},
-                    "url": f"{APP_URL}/api/billing/portal?team_id={team_id}" if sub_active else f"{APP_URL}/api/billing/checkout?team_id={team_id}",
-                },
             ],
         },
-    ]
-
-    # FormPilot API Key section (only show if subscribed)
-    if sub_active:
-        api_key = get_team_api_key(team_id)
-        if api_key:
-            masked_key = api_key[:7] + "..." + api_key[-4:]
-            api_key_text = f"*🔑 FormPilot API Key*\nYour key: `{masked_key}`\n_Copy this key into the FormPilot Chrome extension settings._"
-            api_key_button = {"type": "button", "text": {"type": "plain_text", "text": "Regenerate key"}, "action_id": "regenerate_api_key", "confirm": {"title": {"type": "plain_text", "text": "Regenerate API Key?"}, "text": {"type": "mrkdwn", "text": "This will invalidate your current key. You'll need to update the key in FormPilot."}, "confirm": {"type": "plain_text", "text": "Regenerate"}, "deny": {"type": "plain_text", "text": "Cancel"}}}
-        else:
-            api_key_text = "*🔑 FormPilot API Key*\nNo key generated yet."
-            api_key_button = {"type": "button", "text": {"type": "plain_text", "text": "Generate key"}, "action_id": "generate_api_key", "style": "primary"}
-        
-        blocks.append({"type": "divider"})
-        blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": api_key_text}})
-        blocks.append({"type": "actions", "elements": [api_key_button]})
-
-    blocks.append({"type": "divider"})
-    blocks.append({
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": (
-                "*Commands:*\n"
-                "• `/sow Need K8s migration, 50k users, 6 weeks` — Generate SOW\n"
-                "• `/sow list` — View your SOWs\n"
-                "• `/sow view [id]` — View a specific SOW\n\n"
-                "*How it works:*\n"
-                "1️⃣ `/sow` → AI generates a complete SOW\n"
-                "2️⃣ Review, edit, and click Send\n"
-                "3️⃣ Client receives SOW via DocuSign to approve or deny\n"
-                "4️⃣ On signature → Stripe invoice sent automatically"
-            ),
+        {"type": "divider"},
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": (
+                    "*Commands:*\n"
+                    "• `/sow Need K8s migration, 50k users, 6 weeks` — Generate SOW\n"
+                    "• `/sow list` — View your SOWs\n"
+                    "• `/sow view [id]` — View a specific SOW\n\n"
+                    "*How it works:*\n"
+                    "1️⃣ `/sow` → AI generates a complete SOW\n"
+                    "2️⃣ Review, edit, and click Send\n"
+                    "3️⃣ Client receives SOW via DocuSign to approve or deny\n"
+                    "4️⃣ On signature → Stripe invoice sent automatically"
+                ),
+            },
         },
-    })
+    ]
 
     # Show recent SOWs for this team
     recent = list_sows(team_id)[:5]
@@ -3028,7 +2788,7 @@ async def slack_events(req: Request):
 async def connect_docusign(team_id: str = ""):
     """Start DocuSign OAuth flow — customer connects their own account."""
     if not DOCUSIGN_INTEGRATION_KEY:
-        return HTMLResponse(content=_branded_page("DocuSign", "<p>DocuSign is not configured for this app. Please contact support.</p>", "Back to prodway.ai", LANDING_URL), status_code=500)
+        return HTMLResponse(content="<h1>DocuSign not configured</h1>", status_code=500)
 
     # Store team_id in state so we know who's connecting on callback
     state = f"{team_id}:{uuid.uuid4().hex[:8]}"
@@ -3051,7 +2811,7 @@ async def connect_docusign_callback(code: str = "", state: str = ""):
     team_id = state.split(":")[0] if ":" in state else state
 
     if not code:
-        return HTMLResponse(content=_branded_page("Authorization", "<p>Authorization was denied or the link expired. Please try again from Slack.</p>", "Back to prodway.ai", LANDING_URL), status_code=400)
+        return HTMLResponse(content="<h1>Authorization failed</h1>", status_code=400)
 
     # Exchange code for access token
     token_url = f"https://{DOCUSIGN_AUTH_SERVER}/oauth/token"
@@ -3102,20 +2862,21 @@ async def connect_docusign_callback(code: str = "", state: str = ""):
                 "docusign_connected_at": datetime.now().isoformat(),
             })
 
-            acc_name = default_account.get("account_name", "Connected")
-            body = (
-                '<div class="success-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">'
-                '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>'
-                '<h1>DocuSign connected</h1>'
-                f'<p>Account: {acc_name}. You can close this window and return to Slack.</p>'
-            )
-            return HTMLResponse(content=_branded_page("DocuSign", body, "Open Slack", "https://slack.com/apps"))
+            return HTMLResponse(content=(
+                "<html><body style='font-family:system-ui;text-align:center;padding:80px;"
+                "background:#f8f9fa'>"
+                "<div style='max-width:500px;margin:0 auto;background:white;padding:40px;"
+                "border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1)'>"
+                "<h1 style='color:#22c55e'>✅ DocuSign Connected</h1>"
+                f"<p>Account: {default_account.get('account_name', 'Connected')}</p>"
+                "<p style='color:#666'>You can close this window and return to Slack.</p>"
+                "</div></body></html>"
+            ))
 
     except Exception as e:
         logger.error(f"DocuSign OAuth failed: {e}")
-        err_msg = str(e).replace("<", "&lt;").replace(">", "&gt;")
         return HTMLResponse(
-            content=_branded_page("Connection failed", f"<p>We couldn't connect your DocuSign account. {err_msg}</p><p>Try again from Slack or <a href='" + LANDING_URL + "/#contact' style='color:#22c55e'>contact us</a>.</p>", "Back to prodway.ai", LANDING_URL),
+            content=f"<h1>Connection failed</h1><p>{str(e)}</p>",
             status_code=500,
         )
 
@@ -3127,7 +2888,7 @@ async def connect_docusign_callback(code: str = "", state: str = ""):
 async def connect_stripe(team_id: str = ""):
     """Start Stripe Connect OAuth — customer connects their own Stripe account."""
     if not STRIPE_CLIENT_ID:
-        return HTMLResponse(content=_branded_page("Stripe Connect", "<p>Stripe Connect is not configured. Please contact support.</p>", "Back to prodway.ai", LANDING_URL), status_code=500)
+        return HTMLResponse(content="<h1>Stripe Connect not configured</h1>", status_code=500)
 
     state = f"{team_id}:{uuid.uuid4().hex[:8]}"
     connect_url = (
@@ -3149,7 +2910,7 @@ async def connect_stripe_callback(code: str = "", state: str = ""):
     team_id = state.split(":")[0] if ":" in state else state
 
     if not code:
-        return HTMLResponse(content=_branded_page("Authorization", "<p>Authorization was denied or the link expired. Try again from Slack.</p>", "Back to prodway.ai", LANDING_URL), status_code=400)
+        return HTMLResponse(content="<h1>Authorization failed</h1>", status_code=400)
 
     try:
         # Exchange authorization code for connected account
@@ -3162,19 +2923,21 @@ async def connect_stripe_callback(code: str = "", state: str = ""):
             "stripe_connected_at": datetime.now().isoformat(),
         })
 
-        body = (
-            '<div class="success-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">'
-            '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>'
-            '<h1>Stripe connected</h1>'
-            f'<p>Your Stripe account is linked. You can close this window and return to Slack.</p>'
-        )
-        return HTMLResponse(content=_branded_page("Stripe Connect", body, "Open Slack", "https://slack.com/apps"))
+        return HTMLResponse(content=(
+            "<html><body style='font-family:system-ui;text-align:center;padding:80px;"
+            "background:#f8f9fa'>"
+            "<div style='max-width:500px;margin:0 auto;background:white;padding:40px;"
+            "border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1)'>"
+            "<h1 style='color:#22c55e'>✅ Stripe Connected</h1>"
+            f"<p>Account ID: {resp['stripe_user_id']}</p>"
+            "<p style='color:#666'>You can close this window and return to Slack.</p>"
+            "</div></body></html>"
+        ))
 
     except Exception as e:
         logger.error(f"Stripe Connect OAuth failed: {e}")
-        err_msg = str(e).replace("<", "&lt;").replace(">", "&gt;")
         return HTMLResponse(
-            content=_branded_page("Connection failed", f"<p>We couldn't link your Stripe account. {err_msg}</p><p>Try again from Slack or <a href='" + LANDING_URL + "/#contact' style='color:#22c55e'>contact us</a>.</p>", "Back to prodway.ai", LANDING_URL),
+            content=f"<h1>Connection failed</h1><p>{str(e)}</p>",
             status_code=500,
         )
 
@@ -3198,142 +2961,43 @@ def _create_billing_checkout_session(team_id: str):
     )
     return session.url
 
-# --- Signup Flow: Pay First, Then Connect Slack ---
-
-# Pending signups: signup_token -> {email, stripe_session_id, created_at}
-_pending_signups: dict[str, dict] = {}
-
-
-@api.get("/signup")
-async def signup_page():
-    """Landing page for new signups - redirects to Stripe checkout."""
-    # Generate a signup token to track this session
-    signup_token = f"sig_{secrets.token_urlsafe(24)}"
-    
-    if not STRIPE_SECRET_KEY or not STRIPE_PRICE_BASE_ID:
-        return HTMLResponse(content=_branded_page("Signup", "<p>Billing is not configured yet. Please try again later.</p>"), status_code=503)
-    
-    # Create Stripe checkout for new signup (no team_id yet)
-    session = stripe.checkout.Session.create(
-        payment_method_types=["card"],
-        line_items=[
-            {"price": STRIPE_PRICE_BASE_ID, "quantity": 1},
-            {"price": STRIPE_PRICE_USAGE_ID} if STRIPE_PRICE_USAGE_ID else None,
-        ] if not STRIPE_PRICE_USAGE_ID else [
-            {"price": STRIPE_PRICE_BASE_ID, "quantity": 1},
-            {"price": STRIPE_PRICE_USAGE_ID},
-        ],
-        mode="subscription",
-        client_reference_id=signup_token,
-        success_url=f"{APP_URL}/signup/connect-slack?token={signup_token}",
-        cancel_url=f"{LANDING_URL}?cancelled=true",
-        subscription_data={"metadata": {"signup_token": signup_token}},
-    )
-    
-    _pending_signups[signup_token] = {
-        "stripe_session_id": session.id,
-        "created_at": datetime.now().isoformat(),
-    }
-    
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url=session.url, status_code=302)
-
-
-@api.get("/signup/connect-slack")
-async def connect_slack_page(token: str = ""):
-    """After payment, show the Add to Slack button."""
-    if not token or token not in _pending_signups:
-        # Check if token looks valid but expired from memory (server restart)
-        if token and token.startswith("sig_"):
-            # Allow them to proceed - we'll validate via Stripe webhook data
-            pass
-        else:
-            return HTMLResponse(content=_branded_page(
-                "Invalid Link", 
-                "<p>This signup link is invalid or expired. Please start over.</p>",
-                "Back to prodway.ai", LANDING_URL
-            ), status_code=400)
-    
-    body = (
-        '<div class="success-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">'
-        '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>'
-        '<h1>Payment successful!</h1>'
-        '<p>Now connect your Slack workspace to start using SowFlow.</p>'
-        f'<input type="hidden" id="signup-token" value="{token}">'
-    )
-    # Show the actual Slack OAuth button
-    slack_button = f'<a href="{APP_URL}/slack/install?signup_token={token}" class="cta-btn" style="display:inline-flex;align-items:center;gap:8px;margin-top:24px;"><img src="https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png" width="20" height="20" alt="">Add to Slack</a>'
-    return HTMLResponse(content=_branded_page("Connect Slack", body + slack_button))
-
-
 @api.get("/api/billing/checkout")
 async def billing_checkout(team_id: str = ""):
     from fastapi.responses import RedirectResponse
     if not team_id:
-        # No team_id means new signup - redirect to signup flow
-        return RedirectResponse(url=f"{APP_URL}/signup", status_code=302)
+        return HTMLResponse(content="<h1>Missing team_id</h1>", status_code=400)
     url = _create_billing_checkout_session(team_id)
     if not url:
-        return HTMLResponse(content=_branded_page("Billing", "<p>Billing is not configured yet. Please try again later or <a href='" + LANDING_URL + "/#contact' style='color:#22c55e'>contact us</a>.</p>"), status_code=503)
+        return HTMLResponse(content="<h1>Billing not configured</h1>", status_code=503)
     return RedirectResponse(url=url, status_code=302)
-
-@api.get("/install/success")
-async def install_success(team_id: str = ""):
-    """Post-install success page for already-subscribed teams."""
-    body = (
-        '<div class="success-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">'
-        '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>'
-        '<h1>SowFlow installed</h1>'
-        '<p>You\'re all set! Open Slack and type <code>/sow</code> followed by a project description to generate your first SOW.</p>'
-    )
-    return HTMLResponse(content=_branded_page("Installed", body, "Open Slack", "https://slack.com/apps"))
-
 
 @api.get("/api/billing/success")
 async def billing_success(session_id: str = ""):
-    body = (
-        '<div class="success-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">'
-        '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>'
-        '<h1>You\'re subscribed</h1>'
-        '<p>Your workspace is now on the paid plan. You get 25 SOWs per month included, then $0.25 per SOW after that. You can close this window and return to Slack — or open Slack below.</p>'
-    )
-    return HTMLResponse(content=_branded_page("Success", body, "Open Slack", "https://slack.com/apps"))
+    return HTMLResponse(content=(
+        "<html><body style='font-family:system-ui;text-align:center;padding:80px;background:#f8f9fa'>"
+        "<div style='max-width:500px;margin:0 auto;background:white;padding:40px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1)'>"
+        "<h1 style='color:#22c55e'>You're subscribed</h1>"
+        "<p style='color:#666'>Close this window and return to Slack. 25 SOWs/mo included, then $0.25 each.</p>"
+        "</div></body></html>"
+    ))
 
 @api.get("/api/billing/cancel")
 async def billing_cancel():
-    body = '<h1>Checkout cancelled</h1><p>No charge was made. You can close this window or return to Slack to try again later.</p>'
-    return HTMLResponse(content=_branded_page("Cancelled", body, "Back to prodway.ai", LANDING_URL))
-
-@api.get("/api/validate-key")
-async def validate_api_key(request: Request):
-    """Validate a Prodway API key and return subscription status. Used by FormPilot API."""
-    auth_header = request.headers.get("Authorization", "")
-    api_key = ""
-    if auth_header.startswith("Bearer "):
-        api_key = auth_header[7:]
-    if not api_key:
-        api_key = request.headers.get("X-API-Key", "")
-    
-    if not api_key:
-        raise HTTPException(status_code=401, detail="Missing API key")
-    
-    team_id = get_team_by_api_key(api_key)
-    if not team_id:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    
-    subscribed = is_team_subscribed(team_id)
-    return {"valid": True, "team_id": team_id, "subscribed": subscribed}
-
+    return HTMLResponse(content=(
+        "<html><body style='font-family:system-ui;text-align:center;padding:80px;background:#f8f9fa'>"
+        "<div style='max-width:500px;margin:0 auto;background:white;padding:40px;border-radius:12px'>"
+        "<h1>Cancelled</h1><p>You can close this window.</p></div></body></html>"
+    ))
 
 @api.get("/api/billing/portal")
 async def billing_portal(team_id: str = ""):
     from fastapi.responses import RedirectResponse
     if not team_id or not STRIPE_SECRET_KEY:
-        return HTMLResponse(content=_branded_page("Error", "<p>Invalid request or billing is not configured. Start from the SowFlow app in Slack.</p>"), status_code=400)
+        return HTMLResponse(content="<h1>Missing team_id or Stripe not configured</h1>", status_code=400)
     billing = get_team_billing(team_id)
     customer_id = billing.get("stripe_billing_customer_id")
     if not customer_id:
-        return HTMLResponse(content=_branded_page("Billing", "<p>No subscription yet. Open SowFlow in Slack and click <strong>Upgrade</strong> to subscribe, then you can manage billing here.</p>", "Open Slack", "https://slack.com/apps"), status_code=400)
+        return HTMLResponse(content="<h1>No billing account. Upgrade first from the Slack app.</h1>", status_code=400)
     try:
         session = stripe.billing_portal.Session.create(
             customer=customer_id,
@@ -3342,7 +3006,7 @@ async def billing_portal(team_id: str = ""):
         return RedirectResponse(url=session.url, status_code=302)
     except stripe.error.StripeError as e:
         logger.warning(f"Portal session failed: {e}")
-        return HTMLResponse(content=_branded_page("Error", "<p>We couldn't open the billing portal. Please try again from Slack or <a href='" + LANDING_URL + "/#contact' style='color:#22c55e'>contact us</a>.</p>", "Back to prodway.ai", LANDING_URL), status_code=500)
+        return HTMLResponse(content="<h1>Could not open billing portal</h1>", status_code=500)
 
 # --- BYOK: AI Key Configuration (API) ---
 
@@ -3499,11 +3163,10 @@ async def stripe_webhook(req: Request):
         session = event["data"]["object"]
         logger.info(f"Checkout completed: {session['id']}")
         if session.get("mode") == "subscription" and session.get("subscription"):
-            ref_id = session.get("client_reference_id") or session.get("metadata", {}).get("team_id") or session.get("metadata", {}).get("signup_token")
-            sub_id = session["subscription"]
-            customer_id = session.get("customer")
-            
-            if ref_id:
+            team_id = session.get("client_reference_id") or session.get("metadata", {}).get("team_id")
+            if team_id:
+                sub_id = session["subscription"]
+                customer_id = session.get("customer")
                 try:
                     sub = stripe.Subscription.retrieve(sub_id, expand=["items.data.price"])
                     usage_item_id = None
@@ -3511,29 +3174,15 @@ async def stripe_webhook(req: Request):
                         if item.get("price", {}).get("id") == STRIPE_PRICE_USAGE_ID:
                             usage_item_id = item["id"]
                             break
-                    
-                    if ref_id.startswith("sig_"):
-                        # New signup flow - store subscription under signup token
-                        # Will be linked to team_id when they connect Slack
-                        _pending_signups[ref_id] = {
-                            "stripe_customer_id": customer_id,
-                            "stripe_subscription_id": sub_id,
-                            "stripe_subscription_status": sub.get("status", "active"),
-                            "stripe_subscription_usage_item_id": usage_item_id or "",
-                            "created_at": datetime.now().isoformat(),
-                        }
-                        logger.info(f"Stored pending signup {ref_id} with sub {sub_id}")
-                    else:
-                        # Existing team upgrade
-                        set_team_billing(ref_id,
-                            stripe_billing_customer_id=customer_id,
-                            stripe_subscription_id=sub_id,
-                            stripe_subscription_status=sub.get("status", "active"),
-                            stripe_subscription_usage_item_id=usage_item_id or "",
-                        )
-                        logger.info(f"Billing linked for team {ref_id}: sub {sub_id}")
+                    set_team_billing(team_id,
+                        stripe_billing_customer_id=customer_id,
+                        stripe_subscription_id=sub_id,
+                        stripe_subscription_status=sub.get("status", "active"),
+                        stripe_subscription_usage_item_id=usage_item_id or "",
+                    )
+                    logger.info(f"Billing linked for team {team_id}: sub {sub_id}")
                 except stripe.error.StripeError as e:
-                    logger.warning(f"Failed to process subscription for {ref_id}: {e}")
+                    logger.warning(f"Failed to link subscription to team {team_id}: {e}")
 
     elif event["type"] == "customer.subscription.updated":
         sub = event["data"]["object"]

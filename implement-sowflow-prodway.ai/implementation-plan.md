@@ -39,8 +39,8 @@
 
 ## Phase 2: API key / token issuance
 
-- [ ] Provide a way to create API tokens for a workspace (e.g. settings page or admin endpoint).
-- [ ] Document how to get a token for OpenClaw (or any tool).
+- [x] Provide a way to create API tokens for a workspace (e.g. settings page or admin endpoint).
+- [x] Document how to get a token for OpenClaw (or any tool).
 
 ---
 
