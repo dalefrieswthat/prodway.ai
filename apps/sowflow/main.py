@@ -3214,15 +3214,13 @@ async def signup_page():
         return HTMLResponse(content=_branded_page("Signup", "<p>Billing is not configured yet. Please try again later.</p>"), status_code=503)
     
     # Create Stripe checkout for new signup (no team_id yet)
+    line_items = [{"price": STRIPE_PRICE_BASE_ID, "quantity": 1}]
+    if STRIPE_PRICE_USAGE_ID:
+        line_items.append({"price": STRIPE_PRICE_USAGE_ID})
+    
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
-        line_items=[
-            {"price": STRIPE_PRICE_BASE_ID, "quantity": 1},
-            {"price": STRIPE_PRICE_USAGE_ID} if STRIPE_PRICE_USAGE_ID else None,
-        ] if not STRIPE_PRICE_USAGE_ID else [
-            {"price": STRIPE_PRICE_BASE_ID, "quantity": 1},
-            {"price": STRIPE_PRICE_USAGE_ID},
-        ],
+        line_items=line_items,
         mode="subscription",
         client_reference_id=signup_token,
         success_url=f"{APP_URL}/signup/connect-slack?token={signup_token}",
