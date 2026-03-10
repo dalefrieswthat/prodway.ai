@@ -38,6 +38,8 @@ from pydantic import BaseModel, Field, field_validator, EmailStr
 from anthropic import Anthropic
 from slack_bolt import App
 from slack_bolt.oauth.oauth_settings import OAuthSettings
+from slack_bolt.oauth.callback_options import CallbackOptions, SuccessArgs, FailureArgs
+from slack_bolt.response import BoltResponse
 from slack_bolt.adapter.fastapi import SlackRequestHandler
 from slack_sdk import WebClient
 from slack_sdk.oauth.installation_store import FileInstallationStore
@@ -262,6 +264,33 @@ if _CLI_MODE:
     print(f"\nUsage: curl -H 'Authorization: Bearer {token}' {APP_URL}/api/sows")
     sys.exit(0)
 
+def _oauth_success_callback(args: SuccessArgs) -> BoltResponse:
+    """Redirect to billing checkout after Slack OAuth install (if not subscribed)."""
+    team_id = args.installation.team_id
+    
+    # Check if already subscribed
+    if is_team_subscribed(team_id):
+        # Already subscribed — go to success page
+        return BoltResponse(
+            status=302,
+            headers={"Location": f"{APP_URL}/install/success?team_id={team_id}"}
+        )
+    
+    # Not subscribed — redirect to checkout
+    return BoltResponse(
+        status=302,
+        headers={"Location": f"{APP_URL}/api/billing/checkout?team_id={team_id}"}
+    )
+
+
+def _oauth_failure_callback(args: FailureArgs) -> BoltResponse:
+    """Handle OAuth failure."""
+    return BoltResponse(
+        status=302,
+        headers={"Location": f"{LANDING_URL}?error=install_failed"}
+    )
+
+
 _installation_store = FileInstallationStore(base_dir=str(DATA_DIR / "installations"))
 
 bolt_app = App(
@@ -280,6 +309,10 @@ bolt_app = App(
             state_store=FileOAuthStateStore(
                 expiration_seconds=600,
                 base_dir=str(DATA_DIR / "states"),
+            ),
+            callback_options=CallbackOptions(
+                success=_oauth_success_callback,
+                failure=_oauth_failure_callback,
             ),
         ),
     )
@@ -3141,6 +3174,18 @@ async def billing_checkout(team_id: str = ""):
     if not url:
         return HTMLResponse(content=_branded_page("Billing", "<p>Billing is not configured yet. Please try again later or <a href='" + LANDING_URL + "/#contact' style='color:#22c55e'>contact us</a>.</p>"), status_code=503)
     return RedirectResponse(url=url, status_code=302)
+
+@api.get("/install/success")
+async def install_success(team_id: str = ""):
+    """Post-install success page for already-subscribed teams."""
+    body = (
+        '<div class="success-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">'
+        '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>'
+        '<h1>SowFlow installed</h1>'
+        '<p>You\'re all set! Open Slack and type <code>/sow</code> followed by a project description to generate your first SOW.</p>'
+    )
+    return HTMLResponse(content=_branded_page("Installed", body, "Open Slack", "https://slack.com/apps"))
+
 
 @api.get("/api/billing/success")
 async def billing_success(session_id: str = ""):
