@@ -3556,3 +3556,4 @@ if __name__ == "__main__":
     logger.info(f"   Health:  {APP_URL}/health")
     logger.info(f"   API:     {APP_URL}/api/sows")
     uvicorn.run(api, host="0.0.0.0", port=port)
+# Trigger rebuild Tue Mar 10 18:20:41 CDT 2026
