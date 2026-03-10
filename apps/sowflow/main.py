@@ -3003,11 +3003,7 @@ async def health():
 @api.get("/version")
 async def version():
     """Version check to verify deployment."""
-    return {
-        "version": "2026-03-10-v3",
-        "stripe_configured": bool(STRIPE_SECRET_KEY and STRIPE_PRICE_BASE_ID),
-        "app_url": APP_URL,
-    }
+    return {"v": "4"}
 
 
 # --- Slack OAuth & Events ---
