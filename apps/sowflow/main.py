@@ -3213,15 +3213,15 @@ _pending_signups: dict[str, dict] = {}
 @api.get("/signup")
 async def signup_page():
     """Landing page for new signups - redirects to Stripe checkout."""
-    # Generate a signup token to track this session
-    signup_token = f"sig_{secrets.token_urlsafe(24)}"
-    
-    if not STRIPE_SECRET_KEY or not STRIPE_PRICE_BASE_ID:
-        return HTMLResponse(content=_branded_page("Signup", "<p>Billing is not configured yet. Please try again later.</p>"), status_code=503)
-    
     try:
-        # Create Stripe checkout for new signup (no team_id yet)
-        # Only include the base price - metered usage is added to subscription separately
+        # Step 1: Generate token
+        signup_token = f"sig_{secrets.token_urlsafe(24)}"
+        
+        # Step 2: Check config
+        if not STRIPE_SECRET_KEY or not STRIPE_PRICE_BASE_ID:
+            return {"error": "stripe_not_configured", "key": bool(STRIPE_SECRET_KEY), "price": bool(STRIPE_PRICE_BASE_ID)}
+        
+        # Step 3: Create checkout
         line_items = [{"price": STRIPE_PRICE_BASE_ID, "quantity": 1}]
         
         session = stripe.checkout.Session.create(
@@ -3241,12 +3241,9 @@ async def signup_page():
         
         from fastapi.responses import RedirectResponse
         return RedirectResponse(url=session.url, status_code=302)
-    except stripe.error.StripeError as e:
-        logger.error(f"Stripe checkout creation failed: {e}")
-        return HTMLResponse(content=_branded_page("Error", f"<p>Could not start checkout: {str(e)}</p>"), status_code=500)
     except Exception as e:
-        logger.error(f"Signup failed: {e}")
-        return HTMLResponse(content=_branded_page("Error", f"<p>Something went wrong. Please try again.</p>"), status_code=500)
+        import traceback
+        return {"error": str(e), "type": type(e).__name__, "trace": traceback.format_exc()}
 
 
 @api.get("/signup/connect-slack")
