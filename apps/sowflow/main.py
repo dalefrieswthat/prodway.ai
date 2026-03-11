@@ -64,6 +64,8 @@ SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", "")
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_CLIENT_ID = os.environ.get("STRIPE_CLIENT_ID", "")  # From Connect settings
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRICE_BASE_ID = os.environ.get("STRIPE_PRICE_BASE_ID", "")  # $5/mo recurring price
+STRIPE_PRICE_USAGE_ID = os.environ.get("STRIPE_PRICE_USAGE_ID", "")  # $0.25/SOW metered price
 
 # Platform DocuSign app (YOUR integration key — customers OAuth through it)
 DOCUSIGN_INTEGRATION_KEY = os.environ.get("DOCUSIGN_INTEGRATION_KEY", "")
