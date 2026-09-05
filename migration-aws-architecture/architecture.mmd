@@ -1,0 +1,58 @@
+---
+title: Prodway AWS Architecture
+---
+graph TD
+    subgraph internet [Internet]
+        Slack[Slack API]
+        Chrome[Chrome Extension]
+        DocuSign[DocuSign Webhooks]
+        Stripe[Stripe Webhooks]
+    end
+
+    subgraph cloudflare [Cloudflare]
+        DNS[DNS]
+        Pages[Pages - prodway.ai]
+    end
+
+    subgraph aws [AWS us-east-1]
+        subgraph vpc [VPC 10.0.0.0/16]
+            subgraph alb_layer [Load Balancing]
+                ALB[ALB<br/>HTTP :80<br/>Path-based routing]
+            end
+
+            subgraph subnets [Public Subnets]
+                subgraph sub1 [us-east-1a — 10.0.1.0/24]
+                    SowFlow[SowFlow API<br/>Fargate Spot<br/>0.25 vCPU / 512 MB<br/>Port 3000]
+                end
+                subgraph sub2 [us-east-1b — 10.0.2.0/24]
+                    FormPilot[FormPilot API<br/>Fargate Spot<br/>0.25 vCPU / 512 MB<br/>Port 3000]
+                end
+            end
+
+            EFS[EFS<br/>prodway-data<br/>Access Point UID 1000]
+        end
+
+        ECR[ECR<br/>prodway/sowflow<br/>prodway/formpilot]
+        SM[Secrets Manager<br/>14 keys encrypted]
+        CW[CloudWatch<br/>Logs & Metrics]
+    end
+
+    Slack --> DNS
+    Chrome --> DNS
+    DocuSign --> DNS
+    Stripe --> DNS
+    DNS -->|api.prodway.ai| ALB
+    ALB -->|default| SowFlow
+    ALB -->|/formpilot/*| FormPilot
+    SowFlow --> EFS
+    SowFlow -.-> SM
+    SowFlow -.-> CW
+    FormPilot -.-> CW
+    ECR -.->|image pull| SowFlow
+    ECR -.->|image pull| FormPilot
+
+    style aws fill:#1a1a2e,color:#fff,stroke:#16213e
+    style vpc fill:#0f3460,color:#fff,stroke:#16213e
+    style alb_layer fill:#533483,color:#fff
+    style subnets fill:#16213e,color:#fff
+    style cloudflare fill:#f4722b,color:#fff

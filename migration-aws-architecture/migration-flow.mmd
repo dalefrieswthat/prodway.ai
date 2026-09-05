@@ -1,0 +1,58 @@
+---
+title: Migration Process — Railway to AWS
+---
+flowchart TD
+    Start([Railway Running<br/>~$48/mo]) --> P1
+
+    subgraph P1 [Phase 1: Foundation]
+        VPC[Create VPC<br/>10.0.0.0/16] --> SUB[Create 2 Public Subnets<br/>us-east-1a + 1b]
+        SUB --> IGW[Create IGW<br/>+ Route Table]
+        IGW --> SG[Create Security Groups<br/>ALB / ECS / EFS]
+    end
+
+    P1 --> P2
+
+    subgraph P2 [Phase 2: Storage & Registry]
+        ECR[Create ECR Repos<br/>sowflow + formpilot] --> BUILD[Build Docker Images<br/>linux/amd64]
+        BUILD --> PUSH[Push to ECR]
+        PUSH --> EFS[Create EFS<br/>+ Access Point UID 1000]
+    end
+
+    P2 --> P3
+
+    subgraph P3 [Phase 3: Compute]
+        ALB[Create ALB<br/>+ Target Groups] --> CLUSTER[Create ECS Cluster<br/>Fargate Spot 80%]
+        CLUSTER --> IAM[Create IAM Roles<br/>task-execution + task]
+        IAM --> SECRETS[Link 14 Secrets<br/>from Secrets Manager]
+        SECRETS --> SOWFLOW[Deploy SowFlow<br/>Task Def + Service]
+        SOWFLOW --> FP[Deploy FormPilot<br/>Task Def + Service]
+    end
+
+    P3 --> FIX
+
+    FIX{EFS Permission<br/>Error?}
+    FIX -->|Yes| AP[Create EFS<br/>Access Point<br/>UID 1000]
+    AP --> REDEPLOY[Update Task Def<br/>+ Force Redeploy]
+    FIX -->|No| VERIFY
+    REDEPLOY --> VERIFY
+
+    VERIFY[Verify Health<br/>via ALB] --> P4
+
+    subgraph P4 [Phase 4: CI/CD]
+        OIDC[Create GitHub<br/>OIDC Provider] --> ROLE[Create IAM Role<br/>github-actions-prodway]
+        ROLE --> CI[Update ci.yml<br/>Railway → ECR/ECS]
+    end
+
+    P4 --> P5
+
+    subgraph P5 [Phase 5: Cutover]
+        DNS[Update Cloudflare<br/>CNAME → ALB] --> SOAK[48hr Soak Period]
+        SOAK --> DECOM[Decommission<br/>Railway]
+    end
+
+    P5 --> Done([AWS Running<br/>~$28-33/mo<br/>31-42% savings])
+
+    style Start fill:#ef4444,color:#fff
+    style Done fill:#22c55e,color:#000
+    style FIX fill:#f59e0b,color:#000
+    style AP fill:#f59e0b,color:#000

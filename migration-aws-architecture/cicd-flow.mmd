@@ -1,0 +1,38 @@
+---
+title: CI/CD Pipeline — GitHub OIDC to AWS
+---
+sequenceDiagram
+    participant Dev as Developer
+    participant GH as GitHub Actions
+    participant OIDC as AWS OIDC Provider
+    participant IAM as IAM Role
+    participant ECR as Amazon ECR
+    participant ECS as Amazon ECS
+    participant ALB as ALB
+    participant CF as Cloudflare Pages
+
+    Dev->>GH: Push to main
+    
+    Note over GH: Job: Test
+    GH->>GH: pytest tests/ (124 tests)
+    
+    Note over GH: Job: Build & Deploy
+    GH->>OIDC: Present OIDC token
+    OIDC->>IAM: Validate repo claim
+    IAM-->>GH: Temporary credentials (1hr)
+    
+    GH->>ECR: Docker login
+    GH->>GH: Build sowflow (linux/amd64)
+    GH->>ECR: Push sowflow:sha + :latest
+    GH->>GH: Build formpilot (linux/amd64)
+    GH->>ECR: Push formpilot:sha + :latest
+    
+    GH->>ECS: update-service sowflow
+    GH->>ECS: update-service formpilot
+    ECS->>ECR: Pull new images
+    ECS->>ALB: Register healthy targets
+    GH->>ECS: wait services-stable
+    ECS-->>GH: Both services steady state
+    
+    Note over GH: Job: Deploy Pages (parallel)
+    GH->>CF: Deploy landing page

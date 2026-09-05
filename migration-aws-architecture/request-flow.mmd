@@ -1,0 +1,25 @@
+---
+title: Request Flow — How Traffic Reaches Services
+---
+flowchart LR
+    User([User / Slack / Webhook]) --> CF[Cloudflare DNS<br/>api.prodway.ai]
+    CF --> ALB[ALB<br/>:80]
+    
+    ALB --> R1{Path?}
+    R1 -->|/formpilot/*| TG2[FormPilot TG<br/>Health: /formpilot/health]
+    R1 -->|everything else| TG1[SowFlow TG<br/>Health: /health]
+    
+    TG1 --> SF[SowFlow Container<br/>:3000]
+    TG2 --> FP[FormPilot Container<br/>:3000]
+    
+    SF --> EFS[(EFS<br/>/app/data)]
+    SF --> SM[(Secrets Manager<br/>14 keys)]
+    SF --> AI1[Gemini / Claude]
+    FP --> AI2[Gemini / Claude]
+    FP -.->|validate API key| SF
+    
+    style User fill:#a855f7,color:#fff
+    style ALB fill:#3b82f6,color:#fff
+    style SF fill:#22c55e,color:#000
+    style FP fill:#22c55e,color:#000
+    style EFS fill:#f59e0b,color:#000
