@@ -66,3 +66,6 @@ cursor-context/
 
 # Pre-commit
 .secrets.baseline
+
+# Local databases
+*.db
