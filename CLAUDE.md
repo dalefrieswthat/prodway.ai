@@ -33,7 +33,7 @@ python main.py  # FastAPI on port 3000
 
 ## Deployment
 - Landing: GitHub Pages (push to main auto-deploys)
-- API: Railway (`railway up`), target: api.prodway.ai
+- API: AWS ECS Fargate via GitHub Actions (push to main), target: api.prodway.ai
 - Slack: OAuth HTTP mode (not Socket Mode)
 
 ## Standards

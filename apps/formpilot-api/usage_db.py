@@ -6,7 +6,7 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
-# Default: SQLite file next to the app (e.g. in Railway ephemeral disk or local)
+# Default: SQLite file next to the app (container-local disk or local dev)
 DATA_DIR = Path(__file__).resolve().parent
 SQLITE_PATH = DATA_DIR / "prodway_usage.db"
 

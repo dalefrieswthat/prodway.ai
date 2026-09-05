@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FormPilot",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Auto-fill forms with your company data. YC applications, vendor forms, RFPs\u2014done in seconds.",
   "permissions": [
     "storage",
@@ -11,7 +11,6 @@
   ],
   "host_permissions": [
     "<all_urls>",
-    "https://*.railway.app/*",
     "https://api.prodway.ai/*"
   ],
   "action": {

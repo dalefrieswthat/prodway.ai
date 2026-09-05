@@ -101,6 +101,5 @@ need to scale to 500k. Timeline: 6 weeks.
 docker build -t sowflow .
 docker run -p 3000:3000 --env-file .env sowflow
 
-# Railway
-railway up
+# Production: AWS ECS Fargate, deployed automatically by GitHub Actions on push to main
 ```

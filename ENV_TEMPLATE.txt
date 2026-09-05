@@ -99,11 +99,11 @@ MERCURY_ACCOUNT_ID=
 # DATA_DIR=/app/data
 
 # --------------------------------------------
-# 7. FORMPILOT API (separate deploy, e.g. Railway)
+# 7. FORMPILOT API (separate ECS service)
 # Used by FormPilot Chrome extension for AI field mapping + Import from URL.
-# Set in Railway app variables when deploying apps/formpilot-api.
+# Set via the ECS task definition / Secrets Manager when deploying apps/formpilot-api.
 #
 # Required: At least one of GOOGLE_API_KEY or ANTHROPIC_API_KEY
 # Optional: DEFAULT_AI_PROVIDER (gemini or anthropic)
-# Railway sets PORT automatically.
+# PORT is set in the task definition.
 # --------------------------------------------

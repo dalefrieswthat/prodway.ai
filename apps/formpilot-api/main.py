@@ -1,7 +1,7 @@
 """
 FormPilot API — AI-powered field mapping.
 Netflix: single responsibility (suggest mappings only); API key only on backend; stateless.
-Deploy to Railway; set ANTHROPIC_API_KEY in Railway app variables.
+Deployed to AWS ECS; API keys come from Secrets Manager via the task definition.
 """
 import os
 import json
@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # SowFlow API for key validation (same billing system)
-SOWFLOW_API_URL = os.environ.get("SOWFLOW_API_URL", "https://dynamic-transformation-production.up.railway.app")
+SOWFLOW_API_URL = os.environ.get("SOWFLOW_API_URL", "https://api.prodway.ai")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -110,7 +110,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Extension and web origins (Railway app URL for options; chrome-extension:// for popup)
+# Extension and web origins (API URL for options; chrome-extension:// for popup)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -607,7 +607,7 @@ Respond with only the JSON object, no markdown."""
 
 @app.get("/formpilot/health")
 async def health() -> dict:
-    """Health check for Railway."""
+    """Health check for the load balancer."""
     return {"status": "ok", "service": "formpilot-api"}
 
 
