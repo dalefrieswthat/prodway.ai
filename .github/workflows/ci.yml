@@ -74,6 +74,15 @@ jobs:
           docker push $ECR_REGISTRY/prodway/formpilot:${{ github.sha }}
           docker push $ECR_REGISTRY/prodway/formpilot:latest
 
+      - name: Build and push Prodway API
+        run: |
+          docker build --platform linux/amd64 \
+            -t $ECR_REGISTRY/prodway/api:${{ github.sha }} \
+            -t $ECR_REGISTRY/prodway/api:latest \
+            -f apps/api/Dockerfile .
+          docker push $ECR_REGISTRY/prodway/api:${{ github.sha }}
+          docker push $ECR_REGISTRY/prodway/api:latest
+
       - name: Deploy SowFlow to ECS
         run: |
           aws ecs update-service \
@@ -90,6 +99,14 @@ jobs:
             --force-new-deployment \
             --region $AWS_REGION
 
+      - name: Deploy Prodway API to ECS
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service api \
+            --force-new-deployment \
+            --region $AWS_REGION
+
       - name: Wait for SowFlow deployment
         run: |
           aws ecs wait services-stable \
@@ -102,6 +119,13 @@ jobs:
           aws ecs wait services-stable \
             --cluster $ECS_CLUSTER \
             --services formpilot \
+            --region $AWS_REGION
+
+      - name: Wait for Prodway API deployment
+        run: |
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER \
+            --services api \
             --region $AWS_REGION
 
   deploy-pages:
