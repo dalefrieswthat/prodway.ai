@@ -1,5 +1,8 @@
 # Prodway AI - Project Context
 
+## North Star
+Read `spec/NORTH_STAR.md` before any significant feature, architecture, or UX decision. Prodway is Slack-first, web-powered, engagement-centered, AI-native. The Engagement domain is the product core; all surfaces (Slack, web, extension, agents) operate through the Prodway API on the same Engagement model. SOWs remain structured data, never document blobs.
+
 ## Company
 **Prodway AI** is the autonomous back-office for the specialized service economy. Our AI agents deliver tens of thousands of dollars worth of service work in a fraction of the time — at 90% margins. We're turning internal tools into a global platform, building the system of action for consultants. Starting with the SOW-to-invoice pipeline.
 
