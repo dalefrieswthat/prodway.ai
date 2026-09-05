@@ -27,6 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r apps/sowflow/requirements.txt
+          pip install -r apps/api/requirements.txt
           pip install pytest pytest-asyncio
 
       - name: Run tests

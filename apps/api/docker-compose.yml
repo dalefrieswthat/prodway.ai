@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: prodway
+      POSTGRES_PASSWORD: prodway
+      POSTGRES_DB: prodway
+    ports:
+      - "5433:5432"
+    volumes:
+      - prodway_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prodway"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  prodway_pg:
